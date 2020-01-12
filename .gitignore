@@ -3,3 +3,9 @@ logs
 chebi-cache*
 logs.tgz
 .clover
+
+target/
+
+# Ignore IntelliJ Files
+.idea/
+chebi-update.iml
