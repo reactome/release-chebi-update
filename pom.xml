@@ -11,7 +11,7 @@
 	<description>
 		Synchronization of gk_central Reference Molecule instances with ChEBI (https://www.ebi.ac.uk/chebi/)
 	</description>
-	<url>http://reactome.org</url>
+	<url>https://reactome.org</url>
 	<licenses>
 		<license>
 			<name>GNU AFFERO GENERAL PUBLIC LICENSE</name>
