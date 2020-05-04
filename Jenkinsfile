@@ -75,7 +75,7 @@ pipeline {
 			steps{
 				script{
 					sh "mkdir -p reports"
-					sh "mv *.tsv reports/"
+					sh "mv logs/*.tsv reports/"
 					sh "tar zcf chebi-update-v${currentRelease}-reports.tgz reports/"
 					emailext (
 						body: "Hello,\n\nThis is an automated message from Jenkins regarding an update for v${currentRelease}. The ChEBI Update step has completed. Please review the reports attached to this email. If they look correct, these reports need to be uploaded to the Reactome Drive at Reactome>Release>Release QA>V${currentRelease}_QA>V${currentRelease}_QA_ChEBI_Update_Reports. If they don't look correct, please email the developer running Release. \n\nThanks!",
