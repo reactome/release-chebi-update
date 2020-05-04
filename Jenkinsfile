@@ -28,5 +28,47 @@ pipeline {
 				}
 			}
 		}
+		// This stage backs up the gk_central database before it is modified.
+		stage('Setup: Back up gk_central before modifications'){
+			steps{
+				script{
+					withCredentials([usernamePassword(credentialsId: 'mySQLCuratorUsernamePassword', passwordVariable: 'pass', usernameVariable: 'user')]){
+						def central_before_chebi_update_dump = "${env.GK_CENTRAL}_${currentRelease}_before_chebi_update.dump"
+						sh "mysqldump -u$user -p$pass -h${env.CURATOR_SERVER} ${env.GK_CENTRAL} > $central_before_chebi_update_dump"
+						sh "gzip -f $central_before_chebi_update_dump"
+					}
+				}
+			}
+		}
+		// This stage builds the jar file using Maven.
+		stage('Setup: Build jar file'){
+			steps{
+				script{
+					sh "mvn clean compile assembly:single"
+				}
+			}
+		}
+		// This stage executes the GOUpdate jar file. 
+		stage('Main: ChEBI Update'){
+			steps {
+				script{
+					withCredentials([file(credentialsId: 'Config', variable: 'ConfigFile')]){
+						sh "java -Xmx${env.JAVA_MEM_MAX}m -jar target/chebi-update-*-jar-with-dependencies.jar $ConfigFile"
+					}
+				}
+			}
+		}
+		// This stage backs up the gk_central database after modification.
+		stage('Post: Backup gk_central after modifications'){
+			steps{
+				script{
+					withCredentials([usernamePassword(credentialsId: 'mySQLCuratorUsernamePassword', passwordVariable: 'pass', usernameVariable: 'user')]){
+						def central_after_update_chebi_update_dump = "${env.GK_CENTRAL}_${currentRelease}_after_chebi_update.dump"
+						sh "mysqldump -u$user -p$pass -h${env.CURATOR_SERVER} ${env.GK_CENTRAL} > $central_after_update_chebi_update_dump"
+						sh "gzip -f $central_after_update_chebi_update_dump"
+					}
+				}
+			}
+		}
 	}
 }
