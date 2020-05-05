@@ -78,7 +78,7 @@ pipeline {
 					sh "mv logs/*.tsv reports/"
 					sh "tar zcf chebi-update-v${currentRelease}-reports.tgz reports/"
 					emailext (
-						body: "Hello,\n\nThis is an automated message from Jenkins regarding an update for v${currentRelease}. The ChEBI Update step has completed. Please review the reports attached to this email. If they look correct, these reports need to be uploaded to the Reactome Drive at Reactome>Release>Release QA>V${currentRelease}_QA>V${currentRelease}_QA_ChEBI_Update_Reports. If they don't look correct, please email the developer running Release. \n\nThanks!",
+						body: "Hello,\n\nThis is an automated message from Jenkins regarding an update for v${currentRelease}. The ChEBI Update step has completed. Please review the reports attached to this email. If they look correct, these reports need to be uploaded to the Reactome Drive at Reactome>Release>Release QA>V${currentRelease}_QA>V${currentRelease}_QA_ChEBI_Update_Reports. The URL to the new V${currentRelease}_QA_ChEBI_Update_Reports folder also needs to be updated at https://devwiki.reactome.org/index.php/Reports_Archive under 'ChEBI Update Reports'. Please add the older ChEBI report URL to the 'Archived reports' section of the page. If they don't look correct, please email the developer running Release. \n\nThanks!",
 						to: '$DEFAULT_RECIPIENTS',
 						from: "${env.JENKINS_RELEASE_EMAIL}",
 						subject: "ChEBI Update Reports for v${currentRelease}",
