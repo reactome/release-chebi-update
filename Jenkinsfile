@@ -13,8 +13,8 @@ pipeline {
 			steps{
 				script{
 					// Get current release number from directory
-					currentRelease = (pwd() =~ /(\d+)\//)[0][1];
-					previousRelease = (pwd() =~ /(\d+)\//)[0][1].toInteger() - 1;
+					currentRelease = (pwd() =~ /Releases\/(\d+)\//)[0][1];
+					previousRelease = (pwd() =~ /Releases\/(\d+)\//)[0][1].toInteger() - 1;
 					// This queries the Jenkins API to confirm that the most recent build of 'GOUpdate' was successful.
 					def goStatusUrl = httpRequest authentication: 'jenkinsKey', validResponseCodes: "${env.VALID_RESPONSE_CODES}", url: "${env.JENKINS_JOB_URL}/job/${currentRelease}/job/Pre-Slice/job/GOUpdate/lastBuild/api/json"
 					if (goStatusUrl.getStatus() == 404) {
