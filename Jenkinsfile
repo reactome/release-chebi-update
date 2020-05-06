@@ -18,11 +18,11 @@ pipeline {
 					// This queries the Jenkins API to confirm that the most recent build of 'GO Update' was successful.
 					def goStatusUrl = httpRequest authentication: 'jenkinsKey', validResponseCodes: "${env.VALID_RESPONSE_CODES}", url: "${env.JENKINS_JOB_URL}/job/${currentRelease}/job/Pre-Slice/job/GOUpdate/lastBuild/api/json"
 					if (goStatusUrl.getStatus() == 404) {
-						error("GOUpdate has not yet been run. Please complete a successful build.")
+						error("GO Update has not yet been run. Please complete a successful build.")
 					} else {
 						def goStatusJson = new JsonSlurper().parseText(goStatusUrl.getContent())
 						if (goStatusJson['result'] != "SUCCESS"){
-							error("Most recent GOUpdate build status: " + goStatusJson['result'] + ". Please complete a successful build.")
+							error("Most recent GO Update build status: " + goStatusJson['result'] + ". Please complete a successful build.")
 						}
 					}
 				}
