@@ -1,21 +1,21 @@
 import groovy.json.JsonSlurper
-// This Jenkinsfile is used by Jenkins to run the 'ChEBIUpdate' step of Reactome's release.
-// This step synchronizes Reactome's GO terms with Gene Ontology. 
-// It requires that the 'GOUpdate' step has been run successfully before it can be run.
+// This Jenkinsfile is used by Jenkins to run the 'ChEBI Update' step of Reactome's release.
+// This step synchronizes Reactome's database with ChEBI. 
+// It requires that the 'GO Update' step has been run successfully before it can be run.
 def currentRelease
 def previousRelease
 pipeline {
 	agent any
 
 	stages {
-		// This stage checks that an upstream step, ConfirmReleaseConfigs, was run successfully.
-		stage('Check GOUpdate build succeeded'){
+		// This stage checks that an upstream step, GO Update, was run successfully.
+		stage('Check GO Update build succeeded'){
 			steps{
 				script{
 					// Get current release number from directory
 					currentRelease = (pwd() =~ /Releases\/(\d+)\//)[0][1];
 					previousRelease = (pwd() =~ /Releases\/(\d+)\//)[0][1].toInteger() - 1;
-					// This queries the Jenkins API to confirm that the most recent build of 'GOUpdate' was successful.
+					// This queries the Jenkins API to confirm that the most recent build of 'GO Update' was successful.
 					def goStatusUrl = httpRequest authentication: 'jenkinsKey', validResponseCodes: "${env.VALID_RESPONSE_CODES}", url: "${env.JENKINS_JOB_URL}/job/${currentRelease}/job/Pre-Slice/job/GOUpdate/lastBuild/api/json"
 					if (goStatusUrl.getStatus() == 404) {
 						error("GOUpdate has not yet been run. Please complete a successful build.")
@@ -48,7 +48,7 @@ pipeline {
 				}
 			}
 		}
-		// This stage executes the GOUpdate jar file. 
+		// This stage executes the ChEBI Update jar file. 
 		stage('Main: ChEBI Update'){
 			steps {
 				script{
