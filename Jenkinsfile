@@ -93,8 +93,7 @@ pipeline {
 			steps{
 				script{
 					def s3Path = "${env.S3_RELEASE_DIRECTORY_URL}/${currentRelease}/chebi_update"
-					sh "mkdir -p databases/"
-					sh "mkdir -p data/"
+					sh "mkdir -p databases/ data/"
 					sh "mv --backup=numbered *_${currentRelease}_*.dump.gz databases/"
 					sh "mv chebi-update-v${currentRelease}-reports.tgz data/"
 					sh "gzip logs/*"
