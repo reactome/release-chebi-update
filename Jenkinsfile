@@ -99,7 +99,7 @@ pipeline {
 					sh "mkdir -p databases/ data/"
 					sh "mv --backup=numbered *_${env.RELEASE_VERSION}_*.dump.gz databases/"
 					sh "mv chebi-update-v${env.RELEASE_VERSION}-reports.tgz data/"
-					sh "gzip logs/*"
+					sh "gzip -r logs/*"
 					sh "aws s3 --no-progress --recursive cp databases/ $s3Path/databases/"
 					sh "aws s3 --no-progress --recursive cp logs/ $s3Path/logs/"
 					sh "aws s3 --no-progress --recursive cp data/ $s3Path/data/"
