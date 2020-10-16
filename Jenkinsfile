@@ -1,31 +1,20 @@
-import groovy.json.JsonSlurper
 // This Jenkinsfile is used by Jenkins to run the 'ChEBI Update' step of Reactome's release.
 // This step synchronizes Reactome's database with ChEBI. 
-// It requires that the 'GO Update' step has been run successfully before it can be run.
+import groovy.json.JsonSlurper
+import org.reactome.release.jenkins.utilities.Utilities
+
+// Shared library maintained at 'release-jenkins-utils' repository.
+def utils = new Utilities()
+
 pipeline {
 	agent any
-	
-	environment{
-    		// NOTE: this file must be executed in a directory whose name is a numeric sequence, and whose parent is named "Releases".
-    		// This is how other Jenkinsfiles in the Release process determine the current release number.
-    		RELEASE_VERSION = getReleaseVersion();
-    	}
 
 	stages {
 		// This stage checks that an upstream step, GO Update, was run successfully.
 		stage('Check GO Update build succeeded'){
 			steps{
 				script{
-					// This queries the Jenkins API to confirm that the most recent build of 'GO Update' was successful.
-					def goStatusUrl = httpRequest authentication: 'jenkinsKey', validResponseCodes: "${env.VALID_RESPONSE_CODES}", url: "${env.JENKINS_JOB_URL}/job/${env.RELEASE_VERSION}/job/Pre-Slice/job/GOUpdate/lastBuild/api/json"
-					if (goStatusUrl.getStatus() == 404) {
-						error("GO Update has not yet been run. Please complete a successful build.")
-					} else {
-						def goStatusJson = new JsonSlurper().parseText(goStatusUrl.getContent())
-						if (goStatusJson['result'] != "SUCCESS"){
-							error("Most recent GO Update build status: " + goStatusJson['result'] + ". Please complete a successful build.")
-						}
-					}
+					utils.checkUpstreamBuildsSucceeded("Pre-Slice/job/GOUpdate")
 				}
 			}
 		}
@@ -33,11 +22,8 @@ pipeline {
 		stage('Setup: Back up gk_central before modifications'){
 			steps{
 				script{
-					def timestamp = new Date().format("yyyy-MM-dd-HHmmss")
 					withCredentials([usernamePassword(credentialsId: 'mySQLCuratorUsernamePassword', passwordVariable: 'pass', usernameVariable: 'user')]){
-						def central_before_chebi_update_dump = "${env.GK_CENTRAL_DB}_${env.RELEASE_VERSION}_before_chebi_update_${timestamp}.dump"
-						sh "mysqldump -u$user -p$pass -h${env.CURATOR_SERVER} ${env.GK_CENTRAL_DB} > $central_before_chebi_update_dump"
-						sh "gzip -f $central_before_chebi_update_dump"
+						utils.takeDatabaseDumpAndGzip("${env.GK_CENTRAL_DB}", "chebi_update", "before", "${env.CURATOR_SERVER}")
 					}
 				}
 			}
@@ -46,7 +32,7 @@ pipeline {
 		stage('Setup: Build jar file'){
 			steps{
 				script{
-					sh "mvn clean compile assembly:single"
+					utils.buildJarFile()
 				}
 			}
 		}
@@ -64,11 +50,8 @@ pipeline {
 		stage('Post: Backup gk_central after modifications'){
 			steps{
 				script{
-					def timestamp = new Date().format("yyyy-MM-dd-HHmmss")
 					withCredentials([usernamePassword(credentialsId: 'mySQLCuratorUsernamePassword', passwordVariable: 'pass', usernameVariable: 'user')]){
-						def central_after_update_chebi_update_dump = "${env.GK_CENTRAL_DB}_${env.RELEASE_VERSION}_after_chebi_update_${timestamp}.dump"
-						sh "mysqldump -u$user -p$pass -h${env.CURATOR_SERVER} ${env.GK_CENTRAL_DB} > $central_after_update_chebi_update_dump"
-						sh "gzip -f $central_after_update_chebi_update_dump"
+						utils.takeDatabaseDumpAndGzip("${env.GK_CENTRAL_DB}", "chebi_update", "after", "${env.CURATOR_SERVER}")
 					}
 				}
 			}
@@ -77,16 +60,15 @@ pipeline {
 		stage('Post: Email ChEBI Update Reports'){
 			steps{
 				script{
+					def releaseVersion = utils.getReleaseVersion()
+					def chebiUpdateReportsFile = "chebi-update-v${releaseVersion}-reports.tgz"
 					sh "mkdir -p reports"
-					sh "mv logs/*.tsv reports/"
-					sh "tar zcf chebi-update-v${env.RELEASE_VERSION}-reports.tgz reports/"
-					emailext (
-						body: "Hello,\n\nThis is an automated message from Jenkins regarding an update for v${env.RELEASE_VERSION}. The ChEBI Update step has completed. Please review the reports attached to this email. If they look correct, these reports need to be uploaded to the Reactome Drive at Reactome>Release>Release QA>V${env.RELEASE_VERSION}_QA>V${env.RELEASE_VERSION}_QA_ChEBI_Update_Reports. The URL to the new V${env.RELEASE_VERSION}_QA_ChEBI_Update_Reports folder also needs to be updated at https://devwiki.reactome.org/index.php/Reports_Archive under 'ChEBI Update Reports'. Please add the older ChEBI report URL to the 'Archived reports' section of the page. If they don't look correct, please email the developer running Release. \n\nThanks!",
-						to: '$DEFAULT_RECIPIENTS',
-						from: "${env.JENKINS_RELEASE_EMAIL}",
-						subject: "ChEBI Update Reports for v${env.RELEASE_VERSION}",
-						attachmentsPattern: "**/chebi-update-v${env.RELEASE_VERSION}-reports.tgz"
-					)
+					sh "cp logs/*.tsv reports/"
+					sh "tar zcf ${chebiUpdateReportsFile} reports/"
+					
+					def emailSubject = "ChEBI Update Reports for v${releaseVersion}"
+					def emailBody = "Hello,\n\nThis is an automated message from Jenkins regarding an update for ${releaseVersion}. The ChEBI Update step has completed. Please review the reports attached to this email. If they look correct, these reports need to be uploaded to the Reactome Drive at Reactome>Release>Release QA>${releaseVersion}_QA>V${releaseVersion}_QA_ChEBI_Update_Reports. The URL to the new V${releaseVersion}_QA_ChEBI_Update_Reports folder also needs to be updated at https://devwiki.reactome.org/index.php/Reports_Archive under 'ChEBI Update Reports'. Please add the older ChEBI report URL to the 'Archived reports' section of the page. If they don't look correct, please email the developer running Release. \n\nThanks!"
+					utils.sendEmailWithAttachment("${emailSubject}", "${emailBody}", "${chebiUpdateReportsFile}")
 				}
 			}
 		}
@@ -95,23 +77,13 @@ pipeline {
 		stage('Post: Archive Outputs'){
 			steps{
 				script{
-					def s3Path = "${env.S3_RELEASE_DIRECTORY_URL}/${env.RELEASE_VERSION}/chebi_update"
-					sh "mkdir -p databases/ data/"
-					sh "mv --backup=numbered *_${env.RELEASE_VERSION}_*.dump.gz databases/"
-					sh "mv chebi-update-v${env.RELEASE_VERSION}-reports.tgz data/"
-					sh "gzip -r logs/*"
-					sh "aws s3 --no-progress --recursive cp databases/ $s3Path/databases/"
-					sh "aws s3 --no-progress --recursive cp logs/ $s3Path/logs/"
-					sh "aws s3 --no-progress --recursive cp data/ $s3Path/data/"
-					sh "rm -r databases logs data reports"
+					def releaseVersion = utils.getReleaseVersion()
+					def dataFiles = ["chebi-update-v${releaseVersion}-reports.tgz"]
+					// ChEBI Update log files are already in a folder called 'logs', so an empty list is passed.
+					def logFiles = []
+					utils.cleanUpAndArchiveBuildFiles("chebi_update", dataFiles, logFiles)
 				}
 			}
 		}	
 	}
-}
-
-// Finds release version (ex: 74) from directory that step is being run from.
-def getReleaseVersion()
-{
-    return (pwd() =~ /Releases\/(\d+)\//)[0][1];
 }
