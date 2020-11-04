@@ -81,7 +81,8 @@ pipeline {
 					def dataFiles = ["chebi-update-v${releaseVersion}-reports.tgz"]
 					// ChEBI Update log files are already in a folder called 'logs', so an empty list is passed.
 					def logFiles = []
-					utils.cleanUpAndArchiveBuildFiles("chebi_update", dataFiles, logFiles)
+					def foldersToDelete = []
+					utils.cleanUpAndArchiveBuildFiles("chebi_update", dataFiles, logFiles, foldersToDelete)
 				}
 			}
 		}	
