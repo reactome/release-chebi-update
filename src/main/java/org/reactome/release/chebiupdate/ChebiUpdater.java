@@ -71,6 +71,20 @@ public class ChebiUpdater
 			{
 				try
 				{
+					// Includes if they are the same object or both equal to null
+					if (o1 == o2)
+					{
+						return 0;
+					}
+					else if (o1 == null)
+					{
+						return -1;
+					}
+					else if (o2 == null)
+					{
+						return 1;
+					}
+
 					String surname1 = (String)o1.getAttributeValue(ReactomeJavaConstants.surname);
 					String surname2 = (String)o2.getAttributeValue(ReactomeJavaConstants.surname);
 					int surnameCompare = surname1.compareTo(surname2);
