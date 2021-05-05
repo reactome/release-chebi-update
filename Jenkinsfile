@@ -14,7 +14,7 @@ pipeline {
 		stage('Check GO Update build succeeded'){
 			steps{
 				script{
-					utils.checkUpstreamBuildsSucceeded("Pre-Slice/job/GOUpdate")
+					utils.checkUpstreamBuildsSucceeded("ConfirmReleaseConfigs")
 				}
 			}
 		}
