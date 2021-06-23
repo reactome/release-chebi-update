@@ -16,8 +16,8 @@
 	<url>https://reactome.org</url>
 
 	<organization>
-		<name>Ontario Institute for Cancer Research</name>
-		<url>https://oicr.on.ca</url>
+		<name>Reactome</name>
+		<url>https://reactome.org</url>
 	</organization>
 
 	<licenses>
@@ -31,8 +31,8 @@
 		<developer>
 			<name>Solomon Shorser</name>
 			<email>solomon.shorser@oicr.on.ca</email>
-			<organization>Reactome</organization>
-			<organizationUrl>https://reactome.org</organizationUrl>
+			<organization>Ontario Institute for Cancer Research</organization>
+			<organizationUrl>https://oicr.on.ca</organizationUrl>
 		</developer>
 	</developers>
 
