@@ -69,6 +69,14 @@ public class ChebiUpdater
 			@Override
 			public int compare(GKInstance o1, GKInstance o2)
 			{
+				if (o1 == o2) {
+					return 0;
+				} else if (o1 == null) {
+					return -1;
+				} else if (o2 == null) {
+					return 1;
+				}
+
 				try
 				{
 					String surname1 = (String)o1.getAttributeValue(ReactomeJavaConstants.surname);
