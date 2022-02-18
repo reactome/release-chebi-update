@@ -321,6 +321,7 @@ public class ChebiUpdater
 				// for each ReferenceMolecule with the "new" identifier...
 				for (GKInstance refMol : refMolsWithNewIdentifier)
 				{
+					logger.info(refMol.getExtendedDisplayName());
 					String newIdentifierReferrersString = referrerIDJoiner(refMol);
 					GKInstance creator = ChebiUpdater.getCreator(molecule);
 					refMolIdentChangeLog.info("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}", molecule.getDBID(), cleanCreatorName(creator), molecule.toString(), oldMoleculeIdentifier, newChebiID, refMol.getDBID(), oldIdentifierReferrersString, newIdentifierReferrersString);
