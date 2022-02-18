@@ -307,7 +307,8 @@ public class ChebiUpdater
 		String oldMoleculeIdentifier = (String) molecule.getAttributeValue(ReactomeJavaConstants.identifier);
 		if (!newChebiID.equals(oldMoleculeIdentifier))
 		{
-			 //Need to get list of DB_IDs of referrers for *old* Identifier and also for *new* Identifier.
+			logger.info(molecule.getExtendedDisplayName());
+			//Need to get list of DB_IDs of referrers for *old* Identifier and also for *new* Identifier.
 			String oldIdentifierReferrersString = ChebiUpdater.referrerIDJoiner(molecule);
 
 			// It's possible that the "new" identifier is already in our system. And duplicate ReferenceMolecules are also *possible*, so this will
@@ -321,7 +322,6 @@ public class ChebiUpdater
 				// for each ReferenceMolecule with the "new" identifier...
 				for (GKInstance refMol : refMolsWithNewIdentifier)
 				{
-					logger.info(refMol.getExtendedDisplayName());
 					String newIdentifierReferrersString = referrerIDJoiner(refMol);
 					GKInstance creator = ChebiUpdater.getCreator(molecule);
 					refMolIdentChangeLog.info("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}", molecule.getDBID(), cleanCreatorName(creator), molecule.toString(), oldMoleculeIdentifier, newChebiID, refMol.getDBID(), oldIdentifierReferrersString, newIdentifierReferrersString);
