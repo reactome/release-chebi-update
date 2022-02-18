@@ -50,6 +50,13 @@
 			<version>2.4</version>
 		</dependency>
 
+		<!-- https://mvnrepository.com/artifact/javax.xml.soap/javax.xml.soap-api -->
+		<dependency>
+			<groupId>javax.xml.soap</groupId>
+			<artifactId>javax.xml.soap-api</artifactId>
+			<version>1.4.0</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.reactome.release</groupId>
 			<artifactId>release-common-lib</artifactId>
@@ -90,6 +97,12 @@
 	</dependencies>
 
 	<repositories>
+		<!-- This repo is necessary for release-common-lib snapshots -->
+		<repository>
+			<id>ossrh</id>
+			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
+		</repository>
+
 		<!-- This repo is necessary for the chebiWS-client -->
 		<repository>
 			<id>EBI Repository</id>
