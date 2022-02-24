@@ -69,6 +69,14 @@ public class ChebiUpdater
 			@Override
 			public int compare(GKInstance o1, GKInstance o2)
 			{
+				if (o1 == o2) {
+					return 0;
+				} else if (o1 == null) {
+					return -1;
+				} else if (o2 == null) {
+					return 1;
+				}
+
 				try
 				{
 					// Includes if they are the same object or both equal to null
@@ -321,7 +329,7 @@ public class ChebiUpdater
 		String oldMoleculeIdentifier = (String) molecule.getAttributeValue(ReactomeJavaConstants.identifier);
 		if (!newChebiID.equals(oldMoleculeIdentifier))
 		{
-			 //Need to get list of DB_IDs of referrers for *old* Identifier and also for *new* Identifier.
+			//Need to get list of DB_IDs of referrers for *old* Identifier and also for *new* Identifier.
 			String oldIdentifierReferrersString = ChebiUpdater.referrerIDJoiner(molecule);
 
 			// It's possible that the "new" identifier is already in our system. And duplicate ReferenceMolecules are also *possible*, so this will
@@ -351,14 +359,23 @@ public class ChebiUpdater
 
 	/**
 	 * Returns the DB_IDs of the referrers of a ReferenceMolecule, all joined by "|".
-	 * @param molecule
-	 * @return Returns the DB_IDs of the referrers of a ReferenceMolecule, all joined by "|".
-	 * @throws Exception
+	 * @param molecule The ReferenceMolecule for which to get referrers
+	 * @return Returns the DB_IDs of the referrers of a ReferenceMolecule, all joined by "|" or an empty string if
+	 * there are no referrers.
+	 * @throws Exception Thrown if referrers retrieval from the database throws an exception
 	 */
 	@SuppressWarnings("unchecked")
 	private static String referrerIDJoiner(GKInstance molecule) throws Exception
 	{
-		return ((Collection<GKInstance>) molecule.getReferers(ReactomeJavaConstants.referenceEntity)).stream()
+		Collection<GKInstance> referrers =
+			((Collection<GKInstance>) molecule.getReferers(ReactomeJavaConstants.referenceEntity));
+
+		if (referrers == null)
+		{
+			return "";
+		}
+
+		return referrers.stream()
 				.map(referrer -> referrer.getDBID().toString())
 				.collect(Collectors.joining("|"));
 	}
