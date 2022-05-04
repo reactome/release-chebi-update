@@ -300,17 +300,21 @@ public class ChebiUpdater
 	 * @throws InvalidAttributeValueException
 	 * @throws Exception
 	 */
-	private boolean updateMoleculeName(GKInstance molecule, String chebiName) throws InvalidAttributeException, InvalidAttributeValueException, Exception
-	{
-		String moleculeName = (String) molecule.getAttributeValuesList(ReactomeJavaConstants.name).get(0);
-		if (!chebiName.equals(moleculeName))
-		{
-			molecule.setAttributeValue(ReactomeJavaConstants.name, chebiName);
-			GKInstance creator = ChebiUpdater.getCreator(molecule);
-			refMolNameChangeLog.info("{}\t{}\t{}\t{}\t{}", molecule.getDBID(), cleanCreatorName(creator), molecule.toString() , moleculeName, chebiName);
-			adaptor.updateInstanceAttribute(molecule, ReactomeJavaConstants.name);
-			return true;
-		}
+    private boolean updateMoleculeName(GKInstance molecule, String chebiName) throws InvalidAttributeException, InvalidAttributeValueException, Exception
+    {
+        List<String> moleculeNames = (List<String>) molecule.getAttributeValuesList(ReactomeJavaConstants.name)
+        if (moleculeNames.size() > 0)
+        {
+            String moleculeName = (String) moleculeNames.get(0);
+            if (!chebiName.equals(moleculeName))
+            {
+                molecule.setAttributeValue(ReactomeJavaConstants.name, chebiName);
+                GKInstance creator = ChebiUpdater.getCreator(molecule);
+                refMolNameChangeLog.info("{}\t{}\t{}\t{}\t{}", molecule.getDBID(), cleanCreatorName(creator), molecule.toString() , moleculeName, chebiName);
+                adaptor.updateInstanceAttribute(molecule, ReactomeJavaConstants.name);
+                return true;
+            }
+        }
 		return false;
 	}
 
