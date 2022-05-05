@@ -302,6 +302,11 @@ public class ChebiUpdater
 	 */
 	private boolean updateMoleculeName(GKInstance molecule, String chebiName) throws InvalidAttributeException, InvalidAttributeValueException, Exception
 	{
+		List<String> moleculeNames = molecule.getAttributeValuesList(ReactomeJavaConstants.name);
+		if (moleculeNames == null || moleculeNames.isEmpty()) {
+			return false;
+		}
+
 		String moleculeName = (String) molecule.getAttributeValuesList(ReactomeJavaConstants.name).get(0);
 		if (!chebiName.equals(moleculeName))
 		{
