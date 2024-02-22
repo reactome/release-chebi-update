@@ -37,7 +37,7 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-
+        <jdk.version>11</jdk.version>
 		<mockito.version>2.18.3</mockito.version>
 		<powermock.version>2.0.0</powermock.version>
 	</properties>
@@ -111,10 +111,17 @@
 		</repository>
 
 		<!-- This repo is necessary for the chebiWS-client -->
-		<repository>
-			<id>EBI Repository</id>
-			<url>https://www.ebi.ac.uk/intact/maven/nexus/content/repositories/ebi-repo/</url>
-		</repository>
+        <repository>
+            <id>nexus-ebi-repo</id>
+            <name>The EBI internal repository</name>
+            <url>https://www.ebi.ac.uk/Tools/maven/repos/content/groups/ebi-repo/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
 	</repositories>
 
 	<build>
@@ -125,8 +132,8 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.8.1</version>
 				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
+					<source>${jdk.version}</source>
+					<target>${jdk.version}</target>
 				</configuration>
 			</plugin>
 
@@ -196,6 +203,33 @@
 					</execution>
 				</executions>
 			</plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>3.1.1</version>
+                <dependencies>
+                    <!-- This dependency allows Checkstyle to understand Java 11 syntax -->
+                    <dependency>
+                        <groupId>com.puppycrawl.tools</groupId>
+                        <artifactId>checkstyle</artifactId>
+                        <version>8.44</version>
+                    </dependency>
+                </dependencies>
+                <executions>
+                    <execution>
+                        <id>checkstyle-check</id>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <configLocation>checkstyle.xml</configLocation>
+                    <!-- Optional: Set encoding -->
+                    <encoding>UTF-8</encoding>
+                </configuration>
+            </plugin>
 		</plugins>
 	</build>
 </project>
