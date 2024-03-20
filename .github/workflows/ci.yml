@@ -90,4 +90,3 @@ jobs:
                 docker load --input /tmp/image.tar
                 docker image tag tmp-tag $AWS_REGISTRY/$AWS_REGISTRY_ALIAS/$AWS_REPO:$IMG_TAG
                 docker push $AWS_REGISTRY/$AWS_REGISTRY_ALIAS/$AWS_REPO:$IMG_TAG
-
