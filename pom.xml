@@ -83,14 +83,6 @@
 		<maven.tidy.version>1.0-beta-1</maven.tidy.version>
 	</properties>
 
-	<repositories>
-		<!-- This repo is necessary for the chebiWS-client -->
-		<repository>
-			<id>EBI Repository</id>
-			<url>https://www.ebi.ac.uk/intact/maven/nexus/content/repositories/ebi-repo/</url>
-		</repository>
-	</repositories>
-
 	<dependencies>
 		<!-- Main dependencies -->
 		<dependency>
