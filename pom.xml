@@ -66,7 +66,7 @@
 		<mockito.version>2.18.3</mockito.version>
 		<junit.version>4.12</junit.version>
 		<powermock.version>2.0.0</powermock.version>
-		<reactome.release.common.lib.version>1.2.0</reactome.release.common.lib.version>
+		<reactome.release.common.lib.version>2.0.0-SNAPSHOT</reactome.release.common.lib.version>
 
 		<!-- build -->
 		<jdk.version>1.8</jdk.version>
