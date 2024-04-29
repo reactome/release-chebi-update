@@ -9,6 +9,12 @@ def utils = new Utilities()
 pipeline {
 	agent any
 
+	environment {
+		ECR_URL = 'public.ecr.aws/reactome/release-chebi-update'
+		CONT_NAME = 'chebi_container'
+		CONT_ROOT = '/opt/release-chebi-update'
+	}
+
 	stages {
 		// This stage checks that an upstream step, GO Update, was run successfully.
 		stage('Check GO Update build succeeded'){
@@ -18,6 +24,8 @@ pipeline {
 				}
 			}
 		}
+
+		/*
 		// This stage backs up the gk_central database before it is modified.
 		stage('Setup: Back up gk_central before modifications'){
 			steps{
@@ -28,24 +36,42 @@ pipeline {
 				}
 			}
 		}
-		// This stage builds the jar file using Maven.
-		stage('Setup: Build jar file'){
+		*/
+		// This stage makes the config/credentials file
+		stage('Setup: Get config/credentials'){
 			steps{
 				script{
-					utils.buildJarFile()
-				}
-			}
-		}
-		// This stage executes the ChEBI Update jar file. 
-		stage('Main: ChEBI Update'){
-			steps {
-				script{
 					withCredentials([file(credentialsId: 'Config', variable: 'ConfigFile')]){
-						sh "java -Xmx${env.JAVA_MEM_MAX}m -jar target/chebi-update-*-jar-with-dependencies.jar $ConfigFile"
+						sh "mkdir -p config"
+						sh "sudo cp $ConfigFile config/auth.properties"
+						sh "sudo chown jenkins:jenkins config/ -R"                    
 					}
 				}
 			}
 		}
+		// This stage pulls the docker image and removes old containers
+		stage('Setup: Pull and clean docker environment'){
+			steps{
+				sh "docker pull ${ECR_URL}:latest"
+				sh """
+					if docker ps -a --format '{{.Names}}' | grep -Eq '${CONT_NAME}'; then
+						docker rm -f ${CONT_NAME}
+					fi
+				"""
+			}
+		}
+
+		// This stage executes the ChEBI Update jar file via docker. 
+		stage('Main: ChEBI Update'){
+			steps{
+				sh """\
+					docker run -v \$(pwd)/config:${CONT_ROOT}/config --net=host --name ${CONT_NAME} \\
+						${ECR_URL}:latest \\
+						/bin/bash -c 'java -Xmx${env.JAVA_MEM_MAX}m -jar target/chebi-update-*-jar-with-dependencies.jar config/auth.properties'
+				"""
+			}
+		}
+
 		// This stage backs up the gk_central database after modification.
 		stage('Post: Backup gk_central after modifications'){
 			steps{
@@ -62,8 +88,10 @@ pipeline {
 				script{
 					def releaseVersion = utils.getReleaseVersion()
 					def chebiUpdateReportsFile = "chebi-update-v${releaseVersion}-reports.tgz"
-					sh "mkdir -p reports"
-					sh "cp logs/*.tsv reports/"
+					
+					sh "mkdir -p logs reports"
+					sh "docker cp ${CONT_NAME}:${CONT_ROOT}/logs/. logs/"
+					sh "mv logs/*.tsv reports/"
 					sh "tar zcf ${chebiUpdateReportsFile} reports/"
 					
 					def emailSubject = "ChEBI Update Reports for v${releaseVersion}"
