@@ -100,10 +100,6 @@ public class DBInteractor implements DBReader, DBWriter {
             return false;
         }
 
-        referenceMoleculeNames.add(0, newName);
-        referenceMolecule.setAttributeValue(ReactomeJavaConstants.name, referenceMoleculeNames);
-        getDbAdaptor().updateInstanceAttribute(referenceMolecule, ReactomeJavaConstants.name);
-
         this.referenceMoleculeNameChangeReporter.report(
             referenceMolecule.getDBID().toString(),
             getCreatorName(getCreator(referenceMolecule)),
@@ -111,6 +107,10 @@ public class DBInteractor implements DBReader, DBWriter {
             referenceMoleculeNames.get(0),
             newName
         );
+
+        referenceMoleculeNames.add(0, newName);
+        referenceMolecule.setAttributeValue(ReactomeJavaConstants.name, referenceMoleculeNames);
+        getDbAdaptor().updateInstanceAttribute(referenceMolecule, ReactomeJavaConstants.name);
 
         return true;
     }
