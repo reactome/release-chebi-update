@@ -1,5 +1,6 @@
 package org.reactome;
 
+import com.google.common.collect.Lists;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gk.model.GKInstance;
@@ -13,10 +14,7 @@ import org.reactome.webservice.ChEBIRESTLookup;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.Properties;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.reactome.reports.Utils.getCreator;
@@ -39,23 +37,36 @@ public class Main {
     }
 
     private static void updateReferenceMolecules(List<GKInstance> referenceMolecules) throws Exception {
-        ChEBIRESTLookup chEBIRESTLookup = new ChEBIRESTLookup();
         failedChEBILookupReporter = new FailedChEBILookupReporter();
-
         referenceMoleculeChEBIIdentifierChangeReporter = new ReferenceMoleculeChEBIIdentifierChangeReporter();
-        logger.info("Found " + referenceMolecules.size() + " reference molecules to process");
-        for (GKInstance referenceMolecule : referenceMolecules) {
-            String chEBIIdentifier = getReferenceMoleculeIdentifier(referenceMolecule);
 
-            logger.info("Processing reference molecule " + referenceMolecule.getDisplayName() +
-                " with ChEBI identifier " + chEBIIdentifier + "...");
-            Optional<ChEBIEntity> potentialChEBIEntity =
-                chEBIRESTLookup.getChEBIEntity(chEBIIdentifier);
+        System.out.println("Found " + referenceMolecules.size() + " reference molecules to process");
+
+        final int batchSize = 1000;
+        for (List<GKInstance> referenceMoleculeBatch : getReferenceMoleculeBatches(referenceMolecules, batchSize)) {
+            updateReferenceMoleculeBatch(referenceMoleculeBatch);
+        }
+    }
+
+    private static void updateReferenceMoleculeBatch(List<GKInstance> referenceMoleculeBatch) throws Exception {
+        ChEBIRESTLookup chEBIRESTLookup = new ChEBIRESTLookup();
+
+        Map<GKInstance, Optional<ChEBIEntity>> referenceMoleculeToPotentialChEBIEntity =
+            chEBIRESTLookup.getChEBIEntities(referenceMoleculeBatch);
+
+        for (GKInstance referenceMolecule : referenceMoleculeToPotentialChEBIEntity.keySet() ) {
+            Optional<ChEBIEntity> potentialChEBIEntity = referenceMoleculeToPotentialChEBIEntity.get(referenceMolecule);
 
             potentialChEBIEntity.ifPresentOrElse(chEBIEntity -> {
                 updateReferenceMoleculeWithChEBIEntity(referenceMolecule, chEBIEntity);
             }, () -> logFailedChEBIEntityLookUp(referenceMolecule));
         }
+    }
+
+    private static List<List<GKInstance>> getReferenceMoleculeBatches(
+        List<GKInstance> referenceMolecules, int batchSize) {
+
+        return Lists.partition(referenceMolecules, batchSize);
     }
 
     private static void checkForDuplicates(List<GKInstance> referenceMolecules) throws Exception {
@@ -153,10 +164,6 @@ public class Main {
         return referrers.stream()
             .map(referrer -> referrer.getDBID().toString())
             .collect(Collectors.joining("|"));
-    }
-
-    private static String getReferenceMoleculeIdentifier(GKInstance referenceMolecule) throws Exception {
-        return (String) referenceMolecule.getAttributeValue(ReactomeJavaConstants.identifier);
     }
 
     private static Properties getConfigProperties() throws IOException {
