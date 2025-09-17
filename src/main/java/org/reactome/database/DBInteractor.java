@@ -6,10 +6,12 @@ import org.gk.model.GKInstance;
 import org.gk.model.InstanceDisplayNameGenerator;
 import org.gk.model.ReactomeJavaConstants;
 import org.gk.persistence.MySQLAdaptor;
+import org.gk.persistence.TransactionsNotSupportedException;
 import org.reactome.reports.ReferenceMoleculeFormulaChangeReporter;
 import org.reactome.reports.ReferenceMoleculeNameChangeReporter;
 import org.reactome.reports.SimpleEntityNameChangeReporter;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -32,6 +34,14 @@ public class DBInteractor implements DBReader, DBWriter {
         this.referenceMoleculeNameChangeReporter = new ReferenceMoleculeNameChangeReporter();
         this.referenceMoleculeFormulaChangeReporter = new ReferenceMoleculeFormulaChangeReporter();
         this.simpleEntityNameChangeReporter = new SimpleEntityNameChangeReporter();
+    }
+
+    public void startTransaction() throws TransactionsNotSupportedException, SQLException {
+        getDbAdaptor().startTransaction();
+    }
+
+    public void commit() throws SQLException {
+        getDbAdaptor().commit();
     }
 
     @Override

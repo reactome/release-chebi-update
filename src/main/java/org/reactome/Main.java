@@ -31,6 +31,8 @@ public class Main {
 
         dbInteractor = new DBInteractor(getCuratorDbAdaptor(getConfigProperties()));
 
+        dbInteractor.startTransaction();
+
         List<GKInstance> referenceMolecules = dbInteractor.getAllChEBIReferenceMoleculeInstances();
         logger.info("Updating reference molecules...");
         updateReferenceMolecules(referenceMolecules);
@@ -39,6 +41,8 @@ public class Main {
         logger.info("Checking for duplicate reference molecules...");
         checkForDuplicates(referenceMolecules);
         logger.info("Done checking for duplicate reference molecules");
+
+        dbInteractor.commit();
 
         logger.info("Finished ChEBI update - please check report files for details");
     }
