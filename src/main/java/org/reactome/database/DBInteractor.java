@@ -7,11 +7,15 @@ import org.gk.model.InstanceDisplayNameGenerator;
 import org.gk.model.ReactomeJavaConstants;
 import org.gk.persistence.MySQLAdaptor;
 import org.gk.persistence.TransactionsNotSupportedException;
+import org.gk.schema.GKSchema;
+import org.gk.schema.Schema;
 import org.reactome.reports.ReferenceMoleculeFormulaChangeReporter;
 import org.reactome.reports.ReferenceMoleculeNameChangeReporter;
 import org.reactome.reports.SimpleEntityNameChangeReporter;
 
 import java.sql.SQLException;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -23,13 +27,17 @@ public class DBInteractor implements DBReader, DBWriter {
     private static Logger logger = LogManager.getLogger(DBInteractor.class);
 
     private final MySQLAdaptor dbAdaptor;
+    private final long personId;
+
+    private GKInstance instanceEdit;
 
     private final ReferenceMoleculeNameChangeReporter referenceMoleculeNameChangeReporter;
     private final ReferenceMoleculeFormulaChangeReporter referenceMoleculeFormulaChangeReporter;
     private final SimpleEntityNameChangeReporter simpleEntityNameChangeReporter;
 
-    public DBInteractor(MySQLAdaptor dbAdaptor) {
+    public DBInteractor(MySQLAdaptor dbAdaptor, long personId) {
         this.dbAdaptor = dbAdaptor;
+        this.personId = personId;
 
         this.referenceMoleculeNameChangeReporter = new ReferenceMoleculeNameChangeReporter();
         this.referenceMoleculeFormulaChangeReporter = new ReferenceMoleculeFormulaChangeReporter();
@@ -42,6 +50,19 @@ public class DBInteractor implements DBReader, DBWriter {
 
     public void commit() throws SQLException {
         getDbAdaptor().commit();
+    }
+
+    public GKInstance getInstanceEdit() throws Exception {
+        if (instanceEdit == null) {
+            instanceEdit = new GKInstance(getSchema().getClassByName(ReactomeJavaConstants.InstanceEdit));
+            instanceEdit.setDbAdaptor(getDbAdaptor());
+            instanceEdit.setAttributeValue(ReactomeJavaConstants.note, "ChEBI Update");
+            instanceEdit.setAttributeValue(ReactomeJavaConstants.author, getPersonInstance());
+            instanceEdit.setAttributeValue(ReactomeJavaConstants.dateTime, getCurrentDateTime());
+            InstanceDisplayNameGenerator.setDisplayName(instanceEdit);
+        }
+
+        return instanceEdit;
     }
 
     @Override
@@ -83,6 +104,7 @@ public class DBInteractor implements DBReader, DBWriter {
 
             simpleEntity.setAttributeValue(ReactomeJavaConstants.name, simpleEntityNames);
             getDbAdaptor().updateInstanceAttribute(simpleEntity, ReactomeJavaConstants.name);
+            updateModifiedInstanceEdits(simpleEntity);
 
             this.simpleEntityNameChangeReporter.report(
                 simpleEntity.getDBID().toString(),
@@ -157,6 +179,29 @@ public class DBInteractor implements DBReader, DBWriter {
         return true;
     }
 
+    public boolean updateModifiedInstanceEdits(GKInstance instance) throws Exception {
+        instance.getAttributeValuesList(ReactomeJavaConstants.modified);
+        instance.addAttributeValue(ReactomeJavaConstants.modified, getInstanceEdit());
+        getDbAdaptor().updateInstanceAttribute(instance, ReactomeJavaConstants.modified);
+        return true;
+    }
+
+    private Schema getSchema() throws Exception {
+        if (getDbAdaptor().getSchema() == null) {
+            getDbAdaptor().fetchSchema();
+        }
+
+        return getDbAdaptor().getSchema();
+    }
+
+    private GKInstance getPersonInstance() throws Exception {
+        return getDbAdaptor().fetchInstance(getPersonId());
+    }
+
+    private String getCurrentDateTime() {
+        return ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S"));
+    }
+
     private GKInstance getChEBIReferenceDatabaseOrThrow() throws Exception {
         Collection<GKInstance> chEBIReferenceDatabaseInstances = getDbAdaptor().fetchInstanceByAttribute(
             ReactomeJavaConstants.ReferenceDatabase, ReactomeJavaConstants.name, "=", "ChEBI"
@@ -216,5 +261,9 @@ public class DBInteractor implements DBReader, DBWriter {
 
     private MySQLAdaptor getDbAdaptor() {
         return this.dbAdaptor;
+    }
+
+    private long getPersonId() {
+        return this.personId;
     }
 }

@@ -29,7 +29,7 @@ public class Main {
 
     public static void main(String[] args) throws Exception {
 
-        dbInteractor = new DBInteractor(getCuratorDbAdaptor(getConfigProperties()));
+        dbInteractor = new DBInteractor(getCuratorDbAdaptor(getConfigProperties()), getPersonId());
 
         dbInteractor.startTransaction();
 
@@ -113,6 +113,7 @@ public class Main {
 
             if (nameUpdated || formulaUpdated) {
                 dbInteractor.updateReferenceMoleculeDisplayName(referenceMolecule);
+                dbInteractor.updateModifiedInstanceEdits(referenceMolecule);
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to update reference molecule: " + referenceMolecule, e);
@@ -198,5 +199,9 @@ public class Main {
         int port = Integer.parseInt(configProperties.getProperty(prefix + ".port", "3306"));
 
         return new MySQLAdaptor(host, dbName, user, password, port);
+    }
+
+    private static long getPersonId() throws IOException {
+        return Long.parseLong(getConfigProperties().getProperty("personId"));
     }
 }
