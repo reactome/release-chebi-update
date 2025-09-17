@@ -32,19 +32,30 @@ public class Main {
         dbInteractor = new DBInteractor(getCuratorDbAdaptor(getConfigProperties()));
 
         List<GKInstance> referenceMolecules = dbInteractor.getAllChEBIReferenceMoleculeInstances();
+        logger.info("Updating reference molecules...");
         updateReferenceMolecules(referenceMolecules);
+        logger.info("Done updating reference molecules");
+
+        logger.info("Checking for duplicate reference molecules...");
         checkForDuplicates(referenceMolecules);
+        logger.info("Done checking for duplicate reference molecules");
+
+        logger.info("Finished ChEBI update - please check report files for details");
     }
 
     private static void updateReferenceMolecules(List<GKInstance> referenceMolecules) throws Exception {
         failedChEBILookupReporter = new FailedChEBILookupReporter();
         referenceMoleculeChEBIIdentifierChangeReporter = new ReferenceMoleculeChEBIIdentifierChangeReporter();
 
-        System.out.println("Found " + referenceMolecules.size() + " reference molecules to process");
+        logger.info("Found " + referenceMolecules.size() + " reference molecules to process");
 
         final int batchSize = 1000;
+        int processedCount = 0;
         for (List<GKInstance> referenceMoleculeBatch : getReferenceMoleculeBatches(referenceMolecules, batchSize)) {
             updateReferenceMoleculeBatch(referenceMoleculeBatch);
+
+            processedCount += referenceMoleculeBatch.size();
+            logger.info("Finished processing " + processedCount + " reference molecules");
         }
     }
 
