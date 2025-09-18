@@ -16,6 +16,6 @@ public class FailedChEBILookupReporter implements Reportable {
 
     @Override
     public Path getFilePath() {
-        return Paths.get("failed-chebi-lookups.tsv");
+        return getReportDirectory().resolve(Paths.get("failed-chebi-lookups.tsv"));
     }
 }

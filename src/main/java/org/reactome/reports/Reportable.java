@@ -3,6 +3,7 @@ package org.reactome.reports;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
 public interface Reportable {
@@ -11,7 +12,15 @@ public interface Reportable {
 
     Path getFilePath();
 
+    default Path getReportDirectory() {
+        return Paths.get("reports");
+    }
+
     default void report(String ...values) throws IOException {
+        if (Files.notExists(getReportDirectory())) {
+            Files.createDirectories(getReportDirectory());
+        }
+
         if (Files.notExists(getFilePath())) {
             writeHeader();
         }

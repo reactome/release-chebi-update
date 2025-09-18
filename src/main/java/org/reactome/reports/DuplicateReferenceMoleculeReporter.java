@@ -17,6 +17,6 @@ public class DuplicateReferenceMoleculeReporter implements Reportable {
 
     @Override
     public Path getFilePath() {
-        return Paths.get("duplicates.tsv");
+        return getReportDirectory().resolve(Paths.get("duplicates.tsv"));
     }
 }

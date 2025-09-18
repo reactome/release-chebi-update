@@ -18,6 +18,6 @@ public class SimpleEntityNameChangeReporter implements Reportable {
 
     @Override
     public Path getFilePath() {
-        return Paths.get("simple-entity-name-changes.tsv");
+        return getReportDirectory().resolve(Paths.get("simple-entity-name-changes.tsv"));
     }
 }

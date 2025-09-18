@@ -21,6 +21,6 @@ public class ReferenceMoleculeChEBIIdentifierChangeReporter implements Reportabl
 
     @Override
     public Path getFilePath() {
-        return Paths.get("reference-molecule-chebi-identifier-changes.tsv");
+        return getReportDirectory().resolve(Paths.get("reference-molecule-chebi-identifier-changes.tsv"));
     }
 }

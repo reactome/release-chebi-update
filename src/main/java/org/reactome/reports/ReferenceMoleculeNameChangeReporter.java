@@ -17,6 +17,6 @@ public class ReferenceMoleculeNameChangeReporter implements Reportable {
 
     @Override
     public Path getFilePath() {
-        return Paths.get("reference-molecule-name-changes.tsv");
+        return getReportDirectory().resolve(Paths.get("reference-molecule-name-changes.tsv"));
     }
 }
