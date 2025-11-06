@@ -7,7 +7,6 @@ import org.gk.model.InstanceDisplayNameGenerator;
 import org.gk.model.ReactomeJavaConstants;
 import org.gk.persistence.MySQLAdaptor;
 import org.gk.persistence.TransactionsNotSupportedException;
-import org.gk.schema.GKSchema;
 import org.gk.schema.Schema;
 import org.reactome.reports.ReferenceMoleculeFormulaChangeReporter;
 import org.reactome.reports.ReferenceMoleculeNameChangeReporter;
@@ -52,19 +51,6 @@ public class DBInteractor implements DBReader, DBWriter {
         getDbAdaptor().commit();
     }
 
-    public GKInstance getInstanceEdit() throws Exception {
-        if (instanceEdit == null) {
-            instanceEdit = new GKInstance(getSchema().getClassByName(ReactomeJavaConstants.InstanceEdit));
-            instanceEdit.setDbAdaptor(getDbAdaptor());
-            instanceEdit.setAttributeValue(ReactomeJavaConstants.note, "ChEBI Update");
-            instanceEdit.setAttributeValue(ReactomeJavaConstants.author, getPersonInstance());
-            instanceEdit.setAttributeValue(ReactomeJavaConstants.dateTime, getCurrentDateTime());
-            InstanceDisplayNameGenerator.setDisplayName(instanceEdit);
-        }
-
-        return instanceEdit;
-    }
-
     @Override
     public List<GKInstance> getAllChEBIReferenceMoleculeInstances() throws Exception {
         return new ArrayList<>(
@@ -95,14 +81,13 @@ public class DBInteractor implements DBReader, DBWriter {
         boolean anySimpleEntityNameUpdated = false;
         for (GKInstance simpleEntity : getReferenceMoleculeReferrers(referenceMolecule)) {
             List<String> simpleEntityNames = getSimpleEntityInstanceNames(simpleEntity);
+            List<String> updatedSimpleEntityNames = getUpdatedSimpleEntityNames(referenceMolecule, simpleEntity, newName);
 
-            if (!nameShouldBeAdded(newName, simpleEntity)) {
+            if (simpleEntityNames.equals(updatedSimpleEntityNames)) {
                 continue;
             }
 
-            simpleEntityNames.add(newName);
-
-            simpleEntity.setAttributeValue(ReactomeJavaConstants.name, simpleEntityNames);
+            simpleEntity.setAttributeValue(ReactomeJavaConstants.name, updatedSimpleEntityNames);
             getDbAdaptor().updateInstanceAttribute(simpleEntity, ReactomeJavaConstants.name);
             updateModifiedInstanceEdits(simpleEntity);
 
@@ -111,7 +96,7 @@ public class DBInteractor implements DBReader, DBWriter {
                 getCreatorName(getCreator(simpleEntity)),
                 simpleEntity.getDisplayName(),
                 newName,
-                simpleEntityNames.toString()
+                updatedSimpleEntityNames.toString()
             );
 
             anySimpleEntityNameUpdated = true;
@@ -186,6 +171,77 @@ public class DBInteractor implements DBReader, DBWriter {
         return true;
     }
 
+    GKInstance getInstanceEdit() throws Exception {
+        if (instanceEdit == null) {
+            instanceEdit = new GKInstance(getSchema().getClassByName(ReactomeJavaConstants.InstanceEdit));
+            instanceEdit.setDbAdaptor(getDbAdaptor());
+            instanceEdit.setAttributeValue(ReactomeJavaConstants.note, "ChEBI Update");
+            instanceEdit.setAttributeValue(ReactomeJavaConstants.author, getPersonInstance());
+            instanceEdit.setAttributeValue(ReactomeJavaConstants.dateTime, getCurrentDateTime());
+            InstanceDisplayNameGenerator.setDisplayName(instanceEdit);
+        }
+
+        return instanceEdit;
+    }
+
+    private List<String> getUpdatedSimpleEntityNames(
+        GKInstance referenceMolecule, GKInstance simpleEntity, String newChEBIName) throws Exception {
+
+        List<String> simpleEntityNames = getSimpleEntityInstanceNames(simpleEntity);
+
+        List<String> referenceMoleculeNames = getReferenceMoleculeNames(referenceMolecule);
+
+        String firstReferenceMoleculeName = referenceMoleculeNames.get(0);
+        String firstSimpleEntityName = simpleEntityNames.get(0);
+        if (firstReferenceMoleculeName.equalsIgnoreCase(firstSimpleEntityName)) {
+            simpleEntityNames.remove(newChEBIName);
+            simpleEntityNames.add(0, newChEBIName);
+        } else {
+            // When the reference molecule and simple entity don't share the same first value in their
+            // name lists, the first name of the simple entity is assumed to be specially picked by the
+            // curator.  The second and third names are checked to see if they are the new ChEBI name and
+            // reference molecule name, respectively.  This is because the two slots after the
+            // curator's chosen name should be reserved for them.  If not, they are put into the
+            // second and third slots by this branch.
+            if (secondSimpleEntityNameIsChEBIName(simpleEntityNames, newChEBIName) &&
+                thirdSimpleEntityNameIsReferenceMoleculeName(simpleEntityNames, firstReferenceMoleculeName)) {
+                return simpleEntityNames;
+            }
+
+            simpleEntityNames.remove(newChEBIName);
+            simpleEntityNames.add(0, newChEBIName);
+
+            simpleEntityNames.remove(firstReferenceMoleculeName);
+            simpleEntityNames.add(1, firstReferenceMoleculeName);
+
+        }
+        return simpleEntityNames;
+    }
+
+    private boolean secondSimpleEntityNameIsChEBIName(List<String> simpleEntityNames, String chEBIName) {
+        if (simpleEntityNames.size() < 2) {
+            return false;
+        }
+
+        final String secondSimpleEntityName = simpleEntityNames.get(1);
+
+        return secondSimpleEntityName != null && secondSimpleEntityName.equalsIgnoreCase(chEBIName);
+    }
+
+    private boolean thirdSimpleEntityNameIsReferenceMoleculeName(List<String> simpleEntityNames, String referenceMoleculeName) {
+        if (simpleEntityNames.size() < 3) {
+            return false;
+        }
+
+        final String thirdSimpleEntityName = simpleEntityNames.get(2);
+
+        return thirdSimpleEntityName != null && thirdSimpleEntityName.equalsIgnoreCase(referenceMoleculeName);
+    }
+
+    private List<String> getReferenceMoleculeNames(GKInstance referenceMolecule) throws Exception {
+        return referenceMolecule.getAttributeValuesList(ReactomeJavaConstants.name);
+    }
+
     private Schema getSchema() throws Exception {
         if (getDbAdaptor().getSchema() == null) {
             getDbAdaptor().fetchSchema();
@@ -232,28 +288,6 @@ public class DBInteractor implements DBReader, DBWriter {
         return new ArrayList<>(names);
     }
 
-    private boolean nameShouldBeAdded(String chEBIName, GKInstance simpleEntityInstance) throws Exception {
-        List<String> names = getSimpleEntityInstanceNames(simpleEntityInstance);
-        if (names.isEmpty()) {
-            logger.error("\"{}\" has an empty list of names. This doesn't seem right.",
-                    simpleEntityInstance.toString());
-            return false;
-        }
-
-        // If the first name IS the ChEBI name, then nothing to do. But if not, then need to append.
-        if (names.get(0).equals(chEBIName)) {
-            logger.info("\"{}\" has \"{}\" as its first name: {}",
-                simpleEntityInstance.toString(), chEBIName, names.toString());
-            return false;
-        }
-
-        if (names.contains(chEBIName)) {
-            logger.info("\"{}\" *already* has \"{}\" as in its list of names; it will not be added again. Names: {}",
-                    simpleEntityInstance.toString(), chEBIName, names.toString());
-            return false;
-        }
-        return true;
-    }
 
     private <E> List<E> safeList(List<E> list) {
         return list != null ? list : new ArrayList<>();
