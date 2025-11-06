@@ -10,7 +10,7 @@ import org.reactome.database.DBInteractor;
 import org.reactome.model.ChEBIEntity;
 import org.reactome.reports.FailedChEBILookupReporter;
 import org.reactome.reports.ReferenceMoleculeChEBIIdentifierChangeReporter;
-import org.reactome.webservice.ChEBIRESTLookup;
+import org.reactome.webservice.ChEBIEntityRetriever;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -53,7 +53,7 @@ public class Main {
 
         logger.info("Found " + referenceMolecules.size() + " reference molecules to process");
 
-        final int batchSize = 1000;
+        final int batchSize = 500;
         int processedCount = 0;
         for (List<GKInstance> referenceMoleculeBatch : getReferenceMoleculeBatches(referenceMolecules, batchSize)) {
             updateReferenceMoleculeBatch(referenceMoleculeBatch);
@@ -64,10 +64,10 @@ public class Main {
     }
 
     private static void updateReferenceMoleculeBatch(List<GKInstance> referenceMoleculeBatch) throws Exception {
-        ChEBIRESTLookup chEBIRESTLookup = new ChEBIRESTLookup();
+        ChEBIEntityRetriever chEBIEntityRetriever = new ChEBIEntityRetriever();
 
         Map<GKInstance, Optional<ChEBIEntity>> referenceMoleculeToPotentialChEBIEntity =
-            chEBIRESTLookup.getChEBIEntities(referenceMoleculeBatch);
+            chEBIEntityRetriever.getChEBIEntities(referenceMoleculeBatch);
 
         for (GKInstance referenceMolecule : referenceMoleculeToPotentialChEBIEntity.keySet() ) {
             Optional<ChEBIEntity> potentialChEBIEntity = referenceMoleculeToPotentialChEBIEntity.get(referenceMolecule);
