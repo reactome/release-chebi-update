@@ -93,7 +93,7 @@ public class Main {
     private static void updateReferenceMoleculeWithChEBIEntity(GKInstance referenceMolecule, ChEBIEntity chEBIEntity) {
 
         String newChEBIId = chEBIEntity.getChEBIId();
-        String newName = chEBIEntity.getName();
+        String newChEBIName = chEBIEntity.getName();
         String newFormula = chEBIEntity.getFormula();
 
         try {
@@ -104,14 +104,11 @@ public class Main {
         }
 
         try {
-            boolean nameUpdated = dbInteractor.updateReferenceMoleculeName(referenceMolecule, newName);
+            dbInteractor.updateSimpleEntityReferrersNames(referenceMolecule, newChEBIName);
+
+            boolean referenceMoleculeNameUpdated = dbInteractor.updateReferenceMoleculeName(referenceMolecule, newChEBIName);
             boolean formulaUpdated = dbInteractor.updateReferenceMoleculeFormula(referenceMolecule, newFormula);
-
-            if (nameUpdated) {
-                dbInteractor.updateSimpleEntityReferrersNames(referenceMolecule, newName);
-            }
-
-            if (nameUpdated || formulaUpdated) {
+            if (referenceMoleculeNameUpdated || formulaUpdated) {
                 dbInteractor.updateReferenceMoleculeDisplayName(referenceMolecule);
                 dbInteractor.updateModifiedInstanceEdits(referenceMolecule);
             }
