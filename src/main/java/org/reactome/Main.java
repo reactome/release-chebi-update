@@ -13,6 +13,8 @@ import org.reactome.reports.ReferenceMoleculeChEBIIdentifierChangeReporter;
 import org.reactome.webservice.ChEBIEntityRetriever;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -28,8 +30,9 @@ public class Main {
     private static ReferenceMoleculeChEBIIdentifierChangeReporter referenceMoleculeChEBIIdentifierChangeReporter;
 
     public static void main(String[] args) throws Exception {
-
-        dbInteractor = new DBInteractor(getCuratorDbAdaptor(getConfigProperties()), getPersonId());
+        String configFilePath = args.length > 0 ? args[0] : "src/main/resources/config.properties";
+        Properties configProperties = getConfigProperties(configFilePath);
+        dbInteractor = new DBInteractor(getCuratorDbAdaptor(configProperties), getPersonId(configProperties));
 
         dbInteractor.startTransaction();
 
@@ -179,9 +182,9 @@ public class Main {
             .collect(Collectors.joining("|"));
     }
 
-    private static Properties getConfigProperties() throws IOException {
+    private static Properties getConfigProperties(String configFilePath) throws IOException {
         Properties configProperties = new Properties();
-        configProperties.load(Main.class.getClassLoader().getResourceAsStream("config.properties"));
+        configProperties.load(Files.newInputStream(Path.of(configFilePath)));
 
         return configProperties;
     }
@@ -198,7 +201,7 @@ public class Main {
         return new MySQLAdaptor(host, dbName, user, password, port);
     }
 
-    private static long getPersonId() throws IOException {
-        return Long.parseLong(getConfigProperties().getProperty("personId"));
+    private static long getPersonId(Properties configProperties) {
+        return Long.parseLong(configProperties.getProperty("personId"));
     }
 }
