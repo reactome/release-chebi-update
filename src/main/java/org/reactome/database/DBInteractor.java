@@ -188,8 +188,14 @@ public class DBInteractor implements DBReader, DBWriter {
         GKInstance referenceMolecule, GKInstance simpleEntity, String newChEBIName) throws Exception {
 
         List<String> simpleEntityNames = getSimpleEntityInstanceNames(simpleEntity);
+        if (simpleEntityNames.isEmpty()) {
+            throw new IllegalStateException("Simple entity has no names");
+        }
 
         List<String> referenceMoleculeNames = getReferenceMoleculeNames(referenceMolecule);
+        if (referenceMoleculeNames.isEmpty()) {
+            throw new IllegalStateException("Reference molecule has no names");
+        }
 
         String firstReferenceMoleculeName = referenceMoleculeNames.get(0);
         String firstSimpleEntityName = simpleEntityNames.get(0);
