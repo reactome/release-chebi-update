@@ -25,8 +25,9 @@ public class ChEBIAPIClient {
 
     public ChEBIAPIClient() {
         this.httpClient = HttpClient.newBuilder()
-                .followRedirects(HttpClient.Redirect.ALWAYS)
-                .build();
+            .version(HttpClient.Version.HTTP_1_1)
+            .followRedirects(HttpClient.Redirect.ALWAYS)
+            .build();
     }
 
     // For testing
