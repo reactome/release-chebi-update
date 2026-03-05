@@ -87,16 +87,22 @@ public class DBInteractor implements DBReader, DBWriter {
                 continue;
             }
 
-            simpleEntity.setAttributeValue(ReactomeJavaConstants.name, updatedSimpleEntityNames);
-            getDbAdaptor().updateInstanceAttribute(simpleEntity, ReactomeJavaConstants.name);
-            updateModifiedInstanceEdits(simpleEntity);
+            boolean shouldAutoUpdateSimpleEntityNames = !differentFirstNames(simpleEntityNames, updatedSimpleEntityNames);
+
+            if (shouldAutoUpdateSimpleEntityNames) {
+                simpleEntity.setAttributeValue(ReactomeJavaConstants.name, updatedSimpleEntityNames);
+                getDbAdaptor().updateInstanceAttribute(simpleEntity, ReactomeJavaConstants.name);
+                updateModifiedInstanceEdits(simpleEntity);
+            }
 
             this.simpleEntityNameChangeReporter.report(
                 simpleEntity.getDBID().toString(),
                 getCreatorName(getCreator(simpleEntity)),
                 simpleEntity.getDisplayName(),
                 newName,
-                updatedSimpleEntityNames.toString()
+                simpleEntityNames.toString(),
+                updatedSimpleEntityNames.toString(),
+                String.valueOf(shouldAutoUpdateSimpleEntityNames)
             );
 
             anySimpleEntityNameUpdated = true;
@@ -242,6 +248,23 @@ public class DBInteractor implements DBReader, DBWriter {
         final String thirdSimpleEntityName = simpleEntityNames.get(2);
 
         return thirdSimpleEntityName != null && thirdSimpleEntityName.equalsIgnoreCase(referenceMoleculeName);
+    }
+
+    private boolean differentFirstNames(List<String> simpleEntityNames, List<String> updatedSimpleEntityNames) {
+        if ((simpleEntityNames == null || simpleEntityNames.isEmpty()) &&
+            (updatedSimpleEntityNames == null || updatedSimpleEntityNames.isEmpty())) {
+            return false;
+        }
+
+        if ((simpleEntityNames == null || simpleEntityNames.isEmpty()) ||
+            (updatedSimpleEntityNames == null || updatedSimpleEntityNames.isEmpty())) {
+            return true;
+        }
+
+        String simpleEntityFirstName = simpleEntityNames.get(0);
+        String updatedSimpleEntityFirstName = updatedSimpleEntityNames.get(0);
+
+        return !simpleEntityFirstName.equalsIgnoreCase(updatedSimpleEntityFirstName);
     }
 
     private List<String> getReferenceMoleculeNames(GKInstance referenceMolecule) throws Exception {

@@ -12,7 +12,9 @@ public class SimpleEntityNameChangeReporter implements Reportable {
             "Simple Entity Creator",
             "Simple Entity Display Name",
             "New ChEBI Name",
-            "Existing Simple Entity Names After Update"
+            "Existing Simple Entity Names",
+            "Updated Simple Entity Names",
+            "Automatically Applied Update?"
         );
     }
 
