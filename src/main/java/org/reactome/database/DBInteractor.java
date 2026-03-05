@@ -221,11 +221,10 @@ public class DBInteractor implements DBReader, DBWriter {
             }
 
             simpleEntityNames.remove(newChEBIName);
-            simpleEntityNames.add(0, newChEBIName);
+            simpleEntityNames.add(1, newChEBIName);
 
             simpleEntityNames.remove(firstReferenceMoleculeName);
-            simpleEntityNames.add(1, firstReferenceMoleculeName);
-
+            simpleEntityNames.add(2, firstReferenceMoleculeName);
         }
         return simpleEntityNames;
     }
