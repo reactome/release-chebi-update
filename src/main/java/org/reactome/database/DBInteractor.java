@@ -271,7 +271,7 @@ public class DBInteractor implements DBReader, DBWriter {
         String simpleEntityFirstName = simpleEntityNames.get(0);
         String updatedSimpleEntityFirstName = updatedSimpleEntityNames.get(0);
 
-        return !simpleEntityFirstName.equalsIgnoreCase(updatedSimpleEntityFirstName);
+        return !simpleEntityFirstName.equals(updatedSimpleEntityFirstName);
     }
 
     private List<String> getReferenceMoleculeNames(GKInstance referenceMolecule) throws Exception {
