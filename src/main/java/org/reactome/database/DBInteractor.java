@@ -206,8 +206,11 @@ public class DBInteractor implements DBReader, DBWriter {
         String firstReferenceMoleculeName = referenceMoleculeNames.get(0);
         String firstSimpleEntityName = simpleEntityNames.get(0);
         if (firstReferenceMoleculeName.equalsIgnoreCase(firstSimpleEntityName)) {
-            simpleEntityNames.remove(newChEBIName);
-            simpleEntityNames.add(0, newChEBIName);
+            if (!newChEBIName.equalsIgnoreCase(firstSimpleEntityName) ||
+                newChEBIName.equals(firstSimpleEntityName)) {
+                simpleEntityNames.remove(newChEBIName);
+                simpleEntityNames.add(0, newChEBIName);
+            }
         } else {
             // When the reference molecule and simple entity don't share the same first value in their
             // name lists, the first name of the simple entity is assumed to be specially picked by the
