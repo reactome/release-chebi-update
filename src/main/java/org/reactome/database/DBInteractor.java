@@ -220,11 +220,19 @@ public class DBInteractor implements DBReader, DBWriter {
                 return simpleEntityNames;
             }
 
+            // Remove existing occurrences
             simpleEntityNames.remove(newChEBIName);
-            simpleEntityNames.add(1, newChEBIName);
-
             simpleEntityNames.remove(firstReferenceMoleculeName);
-            simpleEntityNames.add(2, firstReferenceMoleculeName);
+
+            // Insert after the first element
+            int index = Math.min(1, simpleEntityNames.size());
+
+            simpleEntityNames.add(index, newChEBIName);
+
+            // Only add the second if it is different
+            if (!newChEBIName.equals(firstReferenceMoleculeName)) {
+                simpleEntityNames.add(index + 1, firstReferenceMoleculeName);
+            }
         }
         return simpleEntityNames;
     }
