@@ -5,7 +5,7 @@ This tool will perform the ChEBI update.
 It will:
 
  - Query ChEBI for up-to-date information on ChEBI identifiers in Reactome.
- - Update the names of SimpleEntities that refer to ChEBI ReferenceMolecules in Reactome
+ - Update the names of SimpleEntities that refer to ChEBI ReferenceMolecules in Reactome.
  - Update the names, identifiers, and formulae for ReferenceMolecules that need to be updated (based on ChEBI query results).
  - Check for and report on duplicate ReferenceMolecules (two or more different ReferenceMolecule objects that have the same ChEBI Identifier).
  - Report on any ChEBI ReferenceMolecules for which the ChEBI web service did not provide a response.
@@ -25,14 +25,12 @@ person.id=somepersonIDNumber
 
 ## Logging
  
-This application will log to a file under `./logs/main.log`.
-
 Reports will be written under `./reports`. The reports are:
- - DuplicateMoleculeIdentifiers.tsv - This report will list ChEBI Identifiers that are duplicated in the database. The code that generates this report runs at the begining of the process and at the end, so users will know if duplicates were introduced by the process of if they existed before. Because of that, some rows in this file might appear more than once.
- - FailedChEBIQueries.tsv - This report will list ReferenceMolecules which failed when ChEBI was queried, and the reason for the failure.
- - MoleculeIdentifierChanges.tsv - This report will list ReferenceMolecules whose ChEBI identifiers have changed, including the old and new identifiers.
- - MoleculeNameChanges.tsv - This report will list ReferenceMolecules whose names have changed, including the old and new names.
- - ReferenceEntityNameChanges.tsv - This report will list any Entity that refers to a ReferenceMolecule whose name has changed. This report contains the Creator of the Entity, information about the affected Entity, the new name from ChEBI, and the full list of names, *after* the update. 
+ - duplicates.tsv - This report will list ChEBI Identifiers that are duplicated in the database.
+ - failed_chebi_lookups.tsv - This report will list ReferenceMolecules which failed when ChEBI was queried, and the reason for the failure.
+ - reference-molecule-chebi-identifier-changes.tsv - This report will list ReferenceMolecules whose ChEBI identifiers have changed, including the old and new identifiers.
+ - reference-molecule-name-changes.tsv - This report will list ReferenceMolecules whose names have changed, including the old and new names.
+ - simple-entity-name-changes.tsv - This report will list any SimpleEntity (which refers to a ReferenceMolecule) whose name has changed. This report contains the Creator of the Entity, information about the affected Entity, the new name from ChEBI, the full list of names both before and after the update, and whether the update was applied automatically or is a suggestion for curators. 
 
 ## Compiling & Running
 
@@ -48,5 +46,5 @@ If this is successful, you should see a JAR file in the `target` directory, with
 
 To run the program, execute this command:
 ```
-$ java -jar target/chebi-update-jar-with-dependencies.jar
+$ java -jar target/chebi-update-jar-with-dependencies.jar [optional_configuration_file_path]
 ```
