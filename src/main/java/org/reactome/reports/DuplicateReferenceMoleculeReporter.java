@@ -3,7 +3,7 @@ package org.reactome.reports;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public class DuplicateReferenceMoleculeReporter implements Reportable {
+public class DuplicateReferenceMoleculeReporter extends AbstractReporter {
 
     @Override
     public String getHeader() {
@@ -13,6 +13,12 @@ public class DuplicateReferenceMoleculeReporter implements Reportable {
             "Duplicated Identifier",
             "Reference Molecule Display Name"
         );
+    }
+
+    @Override
+    public String getFooter() {
+        return "This report specifies Reference Molecule instances with duplicated ChEBI identifiers.  " +
+            "Where possible, these should be merged and/or all but one removed from the curator database.";
     }
 
     @Override

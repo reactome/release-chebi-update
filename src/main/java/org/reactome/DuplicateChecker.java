@@ -41,6 +41,8 @@ public class DuplicateChecker {
                     referenceMolecule.getDisplayName()
                 );
             }
+
+            this.duplicateReferenceMoleculeReporter.writeFooterIfInitialized();
         }
     }
 

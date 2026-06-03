@@ -3,7 +3,7 @@ package org.reactome.reports;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public class ReferenceMoleculeFormulaChangeReporter implements Reportable {
+public class ReferenceMoleculeFormulaChangeReporter extends AbstractReporter {
     @Override
     public String getHeader() {
         return String.join("\t",
@@ -13,6 +13,13 @@ public class ReferenceMoleculeFormulaChangeReporter implements Reportable {
             "Old Formula",
             "New Formula"
         );
+    }
+
+    @Override
+    public String getFooter() {
+        return "This report specifies when a Reference Molecule instance has a new chemical formula. " +
+            "This report is only informational as the changes have already been applied in the database - " +
+            " nothing need be done.";
     }
 
     @Override

@@ -3,7 +3,7 @@ package org.reactome.reports;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public class FailedChEBILookupReporter implements Reportable {
+public class FailedChEBILookupReporter extends AbstractReporter {
 
     @Override
     public String getHeader() {
@@ -12,6 +12,13 @@ public class FailedChEBILookupReporter implements Reportable {
             "Reference Molecule Creator",
             "Reference Molecule Display Name"
         );
+    }
+
+    @Override
+    public String getFooter() {
+        return "This report specifies Reference Molecule instances whose ChEBI identifier couldn't be retrieved " +
+            "from the external ChEBI API.  This may have been due to an intermittent service interruption or an " +
+            "invalid ChEBI identifier.  The identifiers reported should be checked manually in ChEBI to verify them.";
     }
 
     @Override
