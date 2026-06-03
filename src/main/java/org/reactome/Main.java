@@ -64,6 +64,10 @@ public class Main {
             processedCount += referenceMoleculeBatch.size();
             logger.info("Finished processing " + processedCount + " reference molecules");
         }
+
+        failedChEBILookupReporter.writeFooterIfInitialized();
+        referenceMoleculeChEBIIdentifierChangeReporter.writeFooterIfInitialized();
+        dbInteractor.closeReports();
     }
 
     private static void updateReferenceMoleculeBatch(List<GKInstance> referenceMoleculeBatch) throws Exception {

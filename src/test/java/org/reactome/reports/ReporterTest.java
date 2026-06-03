@@ -11,15 +11,14 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class ReportableTest {
+class ReporterTest {
 
     @TempDir
     Path tempDir;
 
     private TestReporter reporter;
 
-    // Test implementation of Reportable interface
-    private static class TestReporter implements Reportable {
+    private static class TestReporter extends AbstractReporter {
         private final Path reportDirectory;
         private final String fileName;
 
@@ -31,6 +30,11 @@ class ReportableTest {
         @Override
         public String getHeader() {
             return "Column1\tColumn2\tColumn3";
+        }
+
+        @Override
+        public String getFooter() {
+            return "Example Footer";
         }
 
         @Override
@@ -55,7 +59,9 @@ class ReportableTest {
         TestReporter customReporter = new TestReporter(customDir, "test.tsv");
 
         assertFalse(Files.exists(customDir));
+
         customReporter.report("value1", "value2", "value3");
+
         assertTrue(Files.exists(customDir));
     }
 
@@ -64,8 +70,10 @@ class ReportableTest {
         reporter.report("value1", "value2", "value3");
 
         List<String> lines = Files.readAllLines(reporter.getFilePath());
+
         assertEquals(2, lines.size());
         assertEquals(reporter.getHeader(), lines.get(0));
+        assertEquals("value1\tvalue2\tvalue3", lines.get(1));
     }
 
     @Test
@@ -74,6 +82,7 @@ class ReportableTest {
         reporter.report("second1", "second2", "second3");
 
         List<String> lines = Files.readAllLines(reporter.getFilePath());
+
         assertEquals(3, lines.size());
         assertEquals(reporter.getHeader(), lines.get(0));
         assertEquals("first1\tfirst2\tfirst3", lines.get(1));
@@ -81,31 +90,37 @@ class ReportableTest {
     }
 
     @Test
-    void testWriteHeaderCreatesFile() throws IOException {
-        assertFalse(Files.exists(reporter.getFilePath()));
-        reporter.writeHeader();
-        assertTrue(Files.exists(reporter.getFilePath()));
-    }
-
-    @Test
-    void testWriteHeaderWritesCorrectContent() throws IOException {
-        reporter.writeHeader();
-        List<String> lines = Files.readAllLines(reporter.getFilePath());
-        assertEquals(1, lines.size());
-        assertEquals(reporter.getHeader(), lines.get(0));
-    }
-
-    @Test
     void testReportWithEmptyValues() throws IOException {
         reporter.report("");
 
         List<String> lines = Files.readAllLines(reporter.getFilePath());
+
         assertEquals(2, lines.size());
+        assertEquals(reporter.getHeader(), lines.get(0));
         assertEquals("", lines.get(1).trim());
     }
 
     @Test
     void testReportWithNullValues() {
         assertThrows(NullPointerException.class, () -> reporter.report((String[]) null));
+    }
+
+    @Test
+    void testWriteFooterIfRowsExist_noRows_footerNotWritten() throws IOException {
+        reporter.writeFooterIfInitialized();
+
+        assertFalse(Files.exists(reporter.getFilePath()));
+    }
+
+    @Test
+    void testWriteFooterIfRowsExist_afterRows_footerWritten() throws IOException {
+        reporter.report("value1", "value2", "value3");
+
+        reporter.writeFooterIfInitialized();
+
+        List<String> lines = Files.readAllLines(reporter.getFilePath());
+
+        assertEquals(5, lines.size());
+        assertEquals(reporter.getFooter(), lines.get(lines.size() - 1));
     }
 }

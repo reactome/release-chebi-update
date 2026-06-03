@@ -3,7 +3,7 @@ package org.reactome.reports;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public class ReferenceMoleculeChEBIIdentifierChangeReporter implements Reportable {
+public class ReferenceMoleculeChEBIIdentifierChangeReporter extends AbstractReporter {
 
     @Override
     public String getHeader() {
@@ -13,10 +13,18 @@ public class ReferenceMoleculeChEBIIdentifierChangeReporter implements Reportabl
             "Reference Molecule",
             "Deprecated Identifier",
             "Replacement Identifier",
-            "Affected referenceEntity DB_IDs",
-            "DB_ID of Molecule with Replacement Identifier",
-            "DB_IDs of referenceEntities of Molecule with Replacement Identifier"
+            "Affected Simple Entity DB_IDs",
+            "DB_ID of Reference Molecule with Replacement Identifier",
+            "DB_IDs of Simple Entities of Reference Molecule with Replacement Identifier"
         );
+    }
+
+    @Override
+    public String getFooter() {
+        return "This reports specifies Reference Molecule instances whose ChEBI identifier has changed. " +
+            "For any instances reported, it is necessary to move the SimpleEntity referrers to the new " +
+            "Reference Molecule with the replacement identifier and remove the old Reference Molecule with " +
+            "deprecated identifier";
     }
 
     @Override

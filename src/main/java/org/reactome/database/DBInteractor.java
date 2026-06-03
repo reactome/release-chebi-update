@@ -12,6 +12,7 @@ import org.reactome.reports.ReferenceMoleculeFormulaChangeReporter;
 import org.reactome.reports.ReferenceMoleculeNameChangeReporter;
 import org.reactome.reports.SimpleEntityNameChangeReporter;
 
+import java.io.IOException;
 import java.sql.SQLException;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -175,6 +176,12 @@ public class DBInteractor implements DBReader, DBWriter {
         instance.addAttributeValue(ReactomeJavaConstants.modified, getInstanceEdit());
         getDbAdaptor().updateInstanceAttribute(instance, ReactomeJavaConstants.modified);
         return true;
+    }
+
+    public void closeReports() throws IOException {
+        this.referenceMoleculeNameChangeReporter.writeFooterIfInitialized();
+        this.referenceMoleculeFormulaChangeReporter.writeFooterIfInitialized();
+        this.simpleEntityNameChangeReporter.writeFooterIfInitialized();
     }
 
     GKInstance getInstanceEdit() throws Exception {
