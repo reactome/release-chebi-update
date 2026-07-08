@@ -1,12 +1,12 @@
 package org.reactome.webservice;
 
-import org.gk.model.GKInstance;
 import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.reactome.curation.model.SimpleInstance;
 import org.reactome.webservice.helpers.ChEBIAPIClient;
 import org.reactome.webservice.helpers.ChEBIEntityParser;
 import org.reactome.model.ChEBIEntity;
@@ -28,10 +28,10 @@ class ChEBIEntityRetrieverTest {
     private ChEBIEntityParser mockParser;
 
     @Mock
-    private GKInstance mockGKInstance1;
+    private SimpleInstance mockSimpleInstance1;
 
     @Mock
-    private GKInstance mockGKInstance2;
+    private SimpleInstance mockSimpleInstance2;
 
     private ChEBIEntityRetriever retriever;
 
@@ -41,26 +41,26 @@ class ChEBIEntityRetrieverTest {
     }
 
     @Test
-    void getChEBIEntities_NullReferenceMolecules_ThrowsIllegalStateException() {
+    void getDbInstanceToChEBIEntityMap_NullReferenceMolecules_ThrowsIllegalStateException() {
         // Act & Assert
-        assertThrows(IllegalStateException.class, () -> retriever.getChEBIEntities(null));
+        assertThrows(IllegalStateException.class, () -> retriever.getDbInstanceToChEBIEntityMap(null));
     }
 
     @Test
-    void getChEBIEntities_EmptyReferenceMolecules_ThrowsIllegalStateException() {
+    void getDbInstanceToChEBIEntityMap_EmptyReferenceMolecules_ThrowsIllegalStateException() {
         // Act & Assert
-        assertThrows(IllegalStateException.class, () -> retriever.getChEBIEntities(Collections.emptyList()));
+        assertThrows(IllegalStateException.class, () -> retriever.getDbInstanceToChEBIEntityMap(Collections.emptyList()));
     }
 
     @Test
-    void getChEBIEntities_SingleValidEntry_ReturnsCorrectMapping() throws Exception {
+    void getDbInstanceToChEBIEntityMap_SingleValidEntry_ReturnsCorrectMapping() throws Exception {
         // Arrange
         String chEBIId = "15377";
         String chEBIName = "water";
         String chEBIFormula = "H2O";
 
-        List<GKInstance> instances = List.of(mockGKInstance1);
-        when(mockGKInstance1.getAttributeValue("identifier")).thenReturn(chEBIId);
+        List<SimpleInstance> instances = List.of(mockSimpleInstance1);
+        when(mockSimpleInstance1.getAttribute("identifier")).thenReturn(chEBIId);
 
         JSONObject responseJson = new JSONObject()
             .put(chEBIId, new JSONObject()
@@ -73,17 +73,17 @@ class ChEBIEntityRetrieverTest {
         when(mockParser.parse(any())).thenReturn(expectedEntity);
 
         // Act
-        Map<GKInstance, Optional<ChEBIEntity>> result = retriever.getChEBIEntities(instances);
+        Map<SimpleInstance, Optional<ChEBIEntity>> result = retriever.getDbInstanceToChEBIEntityMap(instances);
 
         // Assert
         assertNotNull(result);
         assertEquals(1, result.size());
-        assertTrue(result.get(mockGKInstance1).isPresent());
-        assertEquals(expectedEntity, result.get(mockGKInstance1).get());
+        assertTrue(result.get(mockSimpleInstance1).isPresent());
+        assertEquals(expectedEntity, result.get(mockSimpleInstance1).get());
     }
 
     @Test
-    void getChEBIEntities_MultipleEntries_ReturnsCorrectMapping() throws Exception {
+    void getDbInstanceToChEBIEntityMap_MultipleEntries_ReturnsCorrectMapping() throws Exception {
         // Arrange
         String chEBIId1 = "15377";
         String chEBIName1 = "water";
@@ -92,10 +92,10 @@ class ChEBIEntityRetrieverTest {
         String chEBIId2 = "15378";
         String chEBIName2 = "hydron";
         String chEBIFormula2 = "H";
-        List<GKInstance> instances = List.of(mockGKInstance1, mockGKInstance2);
+        List<SimpleInstance> instances = List.of(mockSimpleInstance1, mockSimpleInstance2);
 
-        when(mockGKInstance1.getAttributeValue("identifier")).thenReturn(chEBIId1);
-        when(mockGKInstance2.getAttributeValue("identifier")).thenReturn(chEBIId2);
+        when(mockSimpleInstance1.getAttribute("identifier")).thenReturn(chEBIId1);
+        when(mockSimpleInstance2.getAttribute("identifier")).thenReturn(chEBIId2);
 
         JSONObject responseJson = new JSONObject()
             .put(chEBIId1, new JSONObject()
@@ -114,20 +114,20 @@ class ChEBIEntityRetrieverTest {
             .thenReturn(entity2);
 
         // Act
-        Map<GKInstance, Optional<ChEBIEntity>> result = retriever.getChEBIEntities(instances);
+        Map<SimpleInstance, Optional<ChEBIEntity>> result = retriever.getDbInstanceToChEBIEntityMap(instances);
 
         // Assert
         assertEquals(2, result.size());
-        assertTrue(result.get(mockGKInstance1).isPresent());
-        assertTrue(result.get(mockGKInstance2).isPresent());
+        assertTrue(result.get(mockSimpleInstance1).isPresent());
+        assertTrue(result.get(mockSimpleInstance2).isPresent());
     }
 
     @Test
-    void getChEBIEntities_NonExistentEntry_ReturnsEmptyOptional() throws Exception {
+    void getDbInstanceToChEBIEntityMap_NonExistentEntry_ReturnsEmptyOptional() throws Exception {
         // Arrange
         String chEBIId = "99999";
-        List<GKInstance> instances = List.of(mockGKInstance1);
-        when(mockGKInstance1.getAttributeValue("identifier")).thenReturn(chEBIId);
+        List<SimpleInstance> instances = List.of(mockSimpleInstance1);
+        when(mockSimpleInstance1.getAttribute("identifier")).thenReturn(chEBIId);
 
         JSONObject responseJson = new JSONObject()
             .put(chEBIId, new JSONObject()
@@ -136,42 +136,42 @@ class ChEBIEntityRetrieverTest {
         when(mockApiClient.fetchCompounds(any())).thenReturn(responseJson);
 
         // Act
-        Map<GKInstance, Optional<ChEBIEntity>> result = retriever.getChEBIEntities(instances);
+        Map<SimpleInstance, Optional<ChEBIEntity>> result = retriever.getDbInstanceToChEBIEntityMap(instances);
 
         // Assert
-        assertFalse(result.get(mockGKInstance1).isPresent());
+        assertFalse(result.get(mockSimpleInstance1).isPresent());
     }
 
     @Test
-    void getChEBIEntities_APIClientThrowsIOException_PropagatesException() throws Exception {
+    void getDbInstanceToChEBIEntityMap_APIClientThrowsIOException_PropagatesException() throws Exception {
         // Arrange
-        List<GKInstance> instances = List.of(mockGKInstance1);
-        when(mockGKInstance1.getAttributeValue("identifier")).thenReturn("15377");
+        List<SimpleInstance> instances = List.of(mockSimpleInstance1);
+        when(mockSimpleInstance1.getAttribute("identifier")).thenReturn("15377");
         when(mockApiClient.fetchCompounds(any())).thenThrow(new IOException("Network error"));
 
         // Act & Assert
-        assertThrows(IOException.class, () -> retriever.getChEBIEntities(instances));
+        assertThrows(IOException.class, () -> retriever.getDbInstanceToChEBIEntityMap(instances));
     }
 
     @Test
-    void getChEBIEntities_DuplicateIdentifiers_ThrowsIllegalStateException() throws Exception {
+    void getDbInstanceToChEBIEntityMap_DuplicateIdentifiers_ThrowsIllegalStateException() throws Exception {
         // Arrange
         String chEBIId = "15377";
 
-        List<GKInstance> instances = List.of(mockGKInstance1, mockGKInstance2);
-        when(mockGKInstance1.getAttributeValue("identifier")).thenReturn(chEBIId);
-        when(mockGKInstance2.getAttributeValue("identifier")).thenReturn(chEBIId);
+        List<SimpleInstance> instances = List.of(mockSimpleInstance1, mockSimpleInstance2);
+        when(mockSimpleInstance1.getAttribute("identifier")).thenReturn(chEBIId);
+        when(mockSimpleInstance2.getAttribute("identifier")).thenReturn(chEBIId);
 
         // Act & Assert
-        assertThrows(IllegalStateException.class, () -> retriever.getChEBIEntities(instances));
+        assertThrows(IllegalStateException.class, () -> retriever.getDbInstanceToChEBIEntityMap(instances));
     }
 
     @Test
-    void getChEBIEntities_ParserThrowsException_PropagatesException() throws Exception {
+    void getDbInstanceToChEBIEntityMap_ParserThrowsException_PropagatesException() throws Exception {
         // Arrange
         String chEBIId = "15377";
-        List<GKInstance> instances = List.of(mockGKInstance1);
-        when(mockGKInstance1.getAttributeValue("identifier")).thenReturn(chEBIId);
+        List<SimpleInstance> instances = List.of(mockSimpleInstance1);
+        when(mockSimpleInstance1.getAttribute("identifier")).thenReturn(chEBIId);
 
         JSONObject responseJson = new JSONObject()
             .put(chEBIId, new JSONObject()
@@ -182,21 +182,21 @@ class ChEBIEntityRetrieverTest {
         when(mockParser.parse(any())).thenThrow(new IllegalArgumentException("Invalid data"));
 
         // Act & Assert
-        assertThrows(IllegalArgumentException.class, () -> retriever.getChEBIEntities(instances));
+        assertThrows(IllegalArgumentException.class, () -> retriever.getDbInstanceToChEBIEntityMap(instances));
     }
 
     @Test
-    void getChEBIEntities_MixedExistenceResults_HandlesCorrectly() throws Exception {
+    void getDbInstanceToChEBIEntityMap_MixedExistenceResults_HandlesCorrectly() throws Exception {
         // Arrange
         String existingId = "15377";
         String existingName = "water";
         String existingFormula = "H2O";
 
         String nonExistingId = "99999";
-        List<GKInstance> instances = List.of(mockGKInstance1, mockGKInstance2);
+        List<SimpleInstance> instances = List.of(mockSimpleInstance1, mockSimpleInstance2);
 
-        when(mockGKInstance1.getAttributeValue("identifier")).thenReturn(existingId);
-        when(mockGKInstance2.getAttributeValue("identifier")).thenReturn(nonExistingId);
+        when(mockSimpleInstance1.getAttribute("identifier")).thenReturn(existingId);
+        when(mockSimpleInstance2.getAttribute("identifier")).thenReturn(nonExistingId);
 
         JSONObject responseJson = new JSONObject()
             .put(existingId, new JSONObject()
@@ -210,11 +210,11 @@ class ChEBIEntityRetrieverTest {
         when(mockParser.parse(any())).thenReturn(expectedEntity);
 
         // Act
-        Map<GKInstance, Optional<ChEBIEntity>> result = retriever.getChEBIEntities(instances);
+        Map<SimpleInstance, Optional<ChEBIEntity>> result = retriever.getDbInstanceToChEBIEntityMap(instances);
 
         // Assert
         assertEquals(2, result.size());
-        assertTrue(result.get(mockGKInstance1).isPresent());
-        assertFalse(result.get(mockGKInstance2).isPresent());
+        assertTrue(result.get(mockSimpleInstance1).isPresent());
+        assertFalse(result.get(mockSimpleInstance2).isPresent());
     }
 }
