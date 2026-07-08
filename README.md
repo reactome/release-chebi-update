@@ -15,11 +15,6 @@ It will:
 This application requires a properties file at `config.properties` that looks like this:
 
 ```
-curator.database.host=database_server
-curator.database.user=someuser
-curator.database.password=someuserspassword
-curator.database.name=reactome_database
-curator.database.port=3306
 person.id=somepersonIDNumber
 ```
 
