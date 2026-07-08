@@ -89,6 +89,7 @@
                     <artifactId>spring-boot-starter-logging</artifactId>
                 </exclusion>
             </exclusions>
+            <classifier>plain</classifier>
         </dependency>
 
         <dependency>
