@@ -13,6 +13,16 @@
     </Appenders>
 
     <Loggers>
+        <!-- Quiet curator-tool-ws (and other noisy libs now routed through log4j2) -->
+        <Logger name="org.reactome.curation" level="warn" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="FileLogger"/>
+        </Logger>
+        <Logger name="org.reactome.server.graph" level="warn" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="FileLogger"/>
+        </Logger>
+
         <!-- Root logger -->
         <Root level="info">
             <AppenderRef ref="Console"/>
