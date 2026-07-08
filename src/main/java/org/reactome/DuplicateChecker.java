@@ -2,41 +2,39 @@ package org.reactome;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.gk.model.GKInstance;
 import org.gk.model.ReactomeJavaConstants;
+import org.reactome.curation.model.SimpleInstance;
 import org.reactome.reports.DuplicateReferenceMoleculeReporter;
 
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static org.reactome.reports.Utils.getCreator;
 import static org.reactome.reports.Utils.getCreatorName;
 
 public class DuplicateChecker {
     private static Logger logger = LogManager.getLogger(DuplicateChecker.class);
 
-    private List<GKInstance> referenceMolecules;
+    private List<SimpleInstance> referenceMolecules;
     private DuplicateReferenceMoleculeReporter duplicateReferenceMoleculeReporter;
 
-    public DuplicateChecker(List<GKInstance> referenceMolecules) {
+    public DuplicateChecker(List<SimpleInstance> referenceMolecules) {
         this.referenceMolecules = referenceMolecules;
         this.duplicateReferenceMoleculeReporter = new DuplicateReferenceMoleculeReporter();
     }
 
     public void findAndLogDuplicates() throws Exception {
-        Map<String, List<GKInstance>> duplicates = getDuplicateIdentifierToReferenceMolecules();
+        Map<String, List<SimpleInstance>> duplicates = getDuplicateIdentifierToReferenceMolecules();
 
-        for (Map.Entry<String, List<GKInstance>> entry : duplicates.entrySet()) {
+        for (Map.Entry<String, List<SimpleInstance>> entry : duplicates.entrySet()) {
             String identifier = entry.getKey();
-            List<GKInstance> duplicateReferenceMolecules = entry.getValue();
+            List<SimpleInstance> duplicateReferenceMolecules = entry.getValue();
 
             // Log each duplicate instance
-            for (GKInstance referenceMolecule : duplicateReferenceMolecules) {
-                GKInstance creator = getCreator(referenceMolecule);
+            for (SimpleInstance referenceMolecule : duplicateReferenceMolecules) {
                 this.duplicateReferenceMoleculeReporter.report(
-                    referenceMolecule.getDBID().toString(),
-                    getCreatorName(creator),
+                    referenceMolecule.getDbId().toString(),
+                    getCreatorName(referenceMolecule),
                     identifier,
                     referenceMolecule.getDisplayName()
                 );
@@ -46,13 +44,13 @@ public class DuplicateChecker {
         }
     }
 
-    private Map<String, List<GKInstance>> getDuplicateIdentifierToReferenceMolecules() {
+    private Map<String, List<SimpleInstance>> getDuplicateIdentifierToReferenceMolecules() {
         return referenceMolecules.stream()
             .collect(Collectors.groupingBy(molecule -> {
                 try {
-                    return (String) molecule.getAttributeValue(ReactomeJavaConstants.identifier);
+                    return (String) molecule.getAttribute(ReactomeJavaConstants.identifier);
                 } catch (Exception e) {
-                    logger.error("Error getting identifier for molecule: " + molecule, e);
+                    logger.error("Error getting identifier for molecule: {}", molecule, e);
                     return "";
                 }
             }))

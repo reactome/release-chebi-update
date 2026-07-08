@@ -3,9 +3,9 @@ package org.reactome;
 import com.google.common.collect.Lists;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.gk.model.GKInstance;
 import org.gk.model.ReactomeJavaConstants;
 import org.gk.persistence.MySQLAdaptor;
+import org.reactome.curation.model.SimpleInstance;
 import org.reactome.database.DBInteractor;
 import org.reactome.model.ChEBIEntity;
 import org.reactome.reports.FailedChEBILookupReporter;
@@ -17,9 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.*;
-import java.util.stream.Collectors;
 
-import static org.reactome.reports.Utils.getCreator;
 import static org.reactome.reports.Utils.getCreatorName;
 
 public class Main {
@@ -32,11 +30,9 @@ public class Main {
     public static void main(String[] args) throws Exception {
         String configFilePath = args.length > 0 ? args[0] : "src/main/resources/config.properties";
         Properties configProperties = getConfigProperties(configFilePath);
-        dbInteractor = new DBInteractor(getCuratorDbAdaptor(configProperties), getPersonId(configProperties));
+        dbInteractor = new DBInteractor(getPersonId(configProperties));
 
-        dbInteractor.startTransaction();
-
-        List<GKInstance> referenceMolecules = dbInteractor.getAllChEBIReferenceMoleculeInstances();
+        List<SimpleInstance> referenceMolecules = dbInteractor.getAllChEBIReferenceMoleculeInstances();
         logger.info("Updating reference molecules...");
         updateReferenceMolecules(referenceMolecules);
         logger.info("Done updating reference molecules");
@@ -45,12 +41,10 @@ public class Main {
         checkForDuplicates(referenceMolecules);
         logger.info("Done checking for duplicate reference molecules");
 
-        dbInteractor.commit();
-
         logger.info("Finished ChEBI update - please check report files for details");
     }
 
-    private static void updateReferenceMolecules(List<GKInstance> referenceMolecules) throws Exception {
+    private static void updateReferenceMolecules(List<SimpleInstance> referenceMolecules) throws Exception {
         failedChEBILookupReporter = new FailedChEBILookupReporter();
         referenceMoleculeChEBIIdentifierChangeReporter = new ReferenceMoleculeChEBIIdentifierChangeReporter();
 
@@ -58,7 +52,7 @@ public class Main {
 
         final int batchSize = 500;
         int processedCount = 0;
-        for (List<GKInstance> referenceMoleculeBatch : getReferenceMoleculeBatches(referenceMolecules, batchSize)) {
+        for (List<SimpleInstance> referenceMoleculeBatch : getReferenceMoleculeBatches(referenceMolecules, batchSize)) {
             updateReferenceMoleculeBatch(referenceMoleculeBatch);
 
             processedCount += referenceMoleculeBatch.size();
@@ -70,13 +64,13 @@ public class Main {
         dbInteractor.closeReports();
     }
 
-    private static void updateReferenceMoleculeBatch(List<GKInstance> referenceMoleculeBatch) throws Exception {
+    private static void updateReferenceMoleculeBatch(List<SimpleInstance> referenceMoleculeBatch) throws Exception {
         ChEBIEntityRetriever chEBIEntityRetriever = new ChEBIEntityRetriever();
 
-        Map<GKInstance, Optional<ChEBIEntity>> referenceMoleculeToPotentialChEBIEntity =
-            chEBIEntityRetriever.getChEBIEntities(referenceMoleculeBatch);
+        Map<SimpleInstance, Optional<ChEBIEntity>> referenceMoleculeToPotentialChEBIEntity =
+            chEBIEntityRetriever.getDbInstanceToChEBIEntityMap(referenceMoleculeBatch);
 
-        for (GKInstance referenceMolecule : referenceMoleculeToPotentialChEBIEntity.keySet() ) {
+        for (SimpleInstance referenceMolecule : referenceMoleculeToPotentialChEBIEntity.keySet() ) {
             Optional<ChEBIEntity> potentialChEBIEntity = referenceMoleculeToPotentialChEBIEntity.get(referenceMolecule);
 
             potentialChEBIEntity.ifPresentOrElse(chEBIEntity -> {
@@ -85,19 +79,19 @@ public class Main {
         }
     }
 
-    private static List<List<GKInstance>> getReferenceMoleculeBatches(
-        List<GKInstance> referenceMolecules, int batchSize) {
+    private static List<List<SimpleInstance>> getReferenceMoleculeBatches(
+        List<SimpleInstance> referenceMolecules, int batchSize) {
 
         return Lists.partition(referenceMolecules, batchSize);
     }
 
-    private static void checkForDuplicates(List<GKInstance> referenceMolecules) throws Exception {
+    private static void checkForDuplicates(List<SimpleInstance> referenceMolecules) throws Exception {
         DuplicateChecker duplicateChecker = new DuplicateChecker(referenceMolecules);
         duplicateChecker.findAndLogDuplicates();
     }
 
     // TODO Move (second try-block?) to DBInteractor class?
-    private static void updateReferenceMoleculeWithChEBIEntity(GKInstance referenceMolecule, ChEBIEntity chEBIEntity) {
+    private static void updateReferenceMoleculeWithChEBIEntity(SimpleInstance referenceMolecule, ChEBIEntity chEBIEntity) {
 
         String newChEBIId = chEBIEntity.getChEBIId();
         String newChEBIName = chEBIEntity.getName();
@@ -113,22 +107,23 @@ public class Main {
         try {
             dbInteractor.updateSimpleEntityReferrersNames(referenceMolecule, newChEBIName);
 
-            boolean referenceMoleculeNameUpdated = dbInteractor.updateReferenceMoleculeName(referenceMolecule, newChEBIName);
-            boolean formulaUpdated = dbInteractor.updateReferenceMoleculeFormula(referenceMolecule, newFormula);
-            if (referenceMoleculeNameUpdated || formulaUpdated) {
-                dbInteractor.updateReferenceMoleculeDisplayName(referenceMolecule);
-                dbInteractor.updateModifiedInstanceEdits(referenceMolecule);
+            boolean referenceMoleculeNameToBeUpdated = dbInteractor.stageUpdateForReferenceMoleculeName(referenceMolecule, newChEBIName);
+            boolean formulaToBeUpdated = dbInteractor.stageUpdateForReferenceMoleculeFormula(referenceMolecule, newFormula);
+            if (referenceMoleculeNameToBeUpdated || formulaToBeUpdated) {
+                dbInteractor.stageUpdateForReferenceMoleculeDisplayName(referenceMolecule);
+
+                dbInteractor.updateInDb(referenceMolecule);
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to update reference molecule: " + referenceMolecule, e);
         }
     }
 
-    private static void logFailedChEBIEntityLookUp(GKInstance referenceMolecule) {
+    private static void logFailedChEBIEntityLookUp(SimpleInstance referenceMolecule) {
         try {
             failedChEBILookupReporter.report(
-                referenceMolecule.getDBID().toString(),
-                getCreatorName(getCreator(referenceMolecule)),
+                referenceMolecule.getDbId().toString(),
+                getCreatorName(referenceMolecule),
                 referenceMolecule.getDisplayName()
             );
         } catch (Exception e) {
@@ -136,54 +131,55 @@ public class Main {
         }
     }
 
-    private static void logIfReferenceMoleculeIdentifierChanged(GKInstance referenceMolecule, String newChEBIId)
+    private static void logIfReferenceMoleculeIdentifierChanged(SimpleInstance referenceMolecule, String newChEBIId)
         throws Exception {
 
-        String existingChEBIId = (String) referenceMolecule.getAttributeValue(ReactomeJavaConstants.identifier);
+        String existingChEBIId = (String) referenceMolecule.getAttribute(ReactomeJavaConstants.identifier);
         if (newChEBIId.equals(existingChEBIId)) {
             return;
         }
 
-        List<GKInstance> refMolsWithNewIdentifier = dbInteractor.getReferenceMoleculesWithChEBIIdentifier(newChEBIId);
+        List<SimpleInstance> refMolsWithNewIdentifier = dbInteractor.getReferenceMoleculesWithChEBIIdentifier(newChEBIId);
         if (refMolsWithNewIdentifier.isEmpty()) {
             logReferenceMoleculeIdentifierChange(referenceMolecule, newChEBIId, null);
         }
 
-        for (GKInstance referenceMoleculeWithNewIdentifier : refMolsWithNewIdentifier) {
+        for (SimpleInstance referenceMoleculeWithNewIdentifier : refMolsWithNewIdentifier) {
             logReferenceMoleculeIdentifierChange(referenceMolecule, newChEBIId, referenceMoleculeWithNewIdentifier);
         }
     }
 
     private static void logReferenceMoleculeIdentifierChange(
-        GKInstance referenceMolecule, String newChEBIId, GKInstance newReferenceMolecule) throws Exception {
+        SimpleInstance referenceMolecule, String newChEBIId, SimpleInstance newReferenceMolecule) throws Exception {
 
-        String existingChEBIId = (String) referenceMolecule.getAttributeValue(ReactomeJavaConstants.identifier);
+        String existingChEBIId = (String) referenceMolecule.getAttribute(ReactomeJavaConstants.identifier);
 
         referenceMoleculeChEBIIdentifierChangeReporter.report(
-            referenceMolecule.getDBID().toString(),
-            getCreatorName(getCreator(referenceMolecule)),
+            referenceMolecule.getDbId().toString(),
+            getCreatorName(referenceMolecule),
             referenceMolecule.getDisplayName(),
             existingChEBIId,
             newChEBIId,
             newReferenceMolecule != null ?
-                newReferenceMolecule.getDBID().toString() : "No new Reference Molecule DB_ID",
+                newReferenceMolecule.getDbId().toString() : "No new Reference Molecule DB_ID",
             getReferenceMoleculeReferrerDbIds(referenceMolecule),
             newReferenceMolecule != null ? getReferenceMoleculeReferrerDbIds(newReferenceMolecule) :
                 "No simple entities DB_IDs for non-existent new Reference Molecule"
         );
     }
 
-    private static String getReferenceMoleculeReferrerDbIds(GKInstance referenceMolecule) throws Exception {
-        Collection<GKInstance> referrers =
-            ((Collection<GKInstance>) referenceMolecule.getReferers(ReactomeJavaConstants.referenceEntity));
+    private static String getReferenceMoleculeReferrerDbIds(SimpleInstance referenceMolecule) throws Exception {
+//        Collection<SimpleInstance> referrers =
+//            ((Collection<SimpleInstance>) referenceMolecule.getReferers(ReactomeJavaConstants.referenceEntity));
 
-        if (referrers == null) {
-            return "";
-        }
-
-        return referrers.stream()
-            .map(referrer -> referrer.getDBID().toString())
-            .collect(Collectors.joining("|"));
+//        if (referrers == null) {
+//            return "";
+//        }
+//
+//        return referrers.stream()
+//            .map(referrer -> referrer.getDbId().toString())
+//            .collect(Collectors.joining("|"));
+        return "To be re-implemented";
     }
 
     private static Properties getConfigProperties(String configFilePath) throws IOException {

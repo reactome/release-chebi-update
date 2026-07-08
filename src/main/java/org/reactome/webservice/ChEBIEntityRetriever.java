@@ -3,6 +3,7 @@ package org.reactome.webservice;
 import org.gk.model.GKInstance;
 import org.json.JSONObject;
 import org.reactome.Utils;
+import org.reactome.curation.model.SimpleInstance;
 import org.reactome.model.ChEBIEntity;
 import org.reactome.webservice.helpers.ChEBIAPIClient;
 import org.reactome.webservice.helpers.ChEBIEntityParser;
@@ -23,22 +24,22 @@ public class ChEBIEntityRetriever {
         this.chEBIEntityParser = chEBIEntityParser;
     }
 
-    public Map<GKInstance, Optional<ChEBIEntity>> getChEBIEntities(List<GKInstance> referenceMolecules)
+    public Map<SimpleInstance, Optional<ChEBIEntity>> getDbInstanceToChEBIEntityMap(List<SimpleInstance> referenceMolecules)
         throws IOException, InterruptedException {
 
         if (referenceMolecules == null || referenceMolecules.isEmpty()) {
             throw new IllegalStateException("No reference molecules for identifiers to query ChEBI");
         }
 
-        Map<String, GKInstance> chEBIIdentifierToReferenceMoleculeMap =
+        Map<String, SimpleInstance> chEBIIdentifierToReferenceMoleculeMap =
             Utils.getIdentifierToReferenceMoleculeMap(referenceMolecules);
 
         Set<String> chEBIIdentifiers = chEBIIdentifierToReferenceMoleculeMap.keySet();
         JSONObject chEBIResponseJSON = chEBIAPIClient.fetchCompounds(chEBIIdentifiers);
 
-        Map<GKInstance, Optional<ChEBIEntity>> chEBIEntities = new HashMap<>();
+        Map<SimpleInstance, Optional<ChEBIEntity>> chEBIEntities = new HashMap<>();
         for (String chEBIIdentifier : chEBIIdentifiers) {
-            GKInstance referenceMolecule = chEBIIdentifierToReferenceMoleculeMap.get(chEBIIdentifier);
+            SimpleInstance referenceMolecule = chEBIIdentifierToReferenceMoleculeMap.get(chEBIIdentifier);
 
             JSONObject chEBIIdentifierJSON = chEBIResponseJSON.getJSONObject(chEBIIdentifier);
             if (chEBIIdentifierJSON.getBoolean("exists")) {

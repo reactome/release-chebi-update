@@ -1,20 +1,18 @@
 package org.reactome.reports;
 
-import org.gk.model.GKInstance;
 import org.gk.model.ReactomeJavaConstants;
+import org.reactome.curation.model.SimpleInstance;
 
 public class Utils {
 
-    public static GKInstance getCreator(GKInstance inst) throws Exception {
-        GKInstance createdInstanceEdit = (GKInstance) inst.getAttributeValue(ReactomeJavaConstants.created);
+    public static String getCreatorName(SimpleInstance inst) {
+        SimpleInstance createdInstanceEdit = (SimpleInstance) inst.getAttribute(ReactomeJavaConstants.created);
         if (createdInstanceEdit == null) {
-            return null;
+            return "UNKNOWN AUTHOR";
         }
-        GKInstance creator = (GKInstance) createdInstanceEdit.getAttributeValue(ReactomeJavaConstants.author);
-        return creator;
-    }
-
-    public static String getCreatorName(GKInstance creator) {
-        return creator != null ? creator.toString() : "AUTHOR UNKNOWN";
+        String createdInstanceEditDisplayName = createdInstanceEdit.getDisplayName();
+        int nameAndDateSeparatorIndex = createdInstanceEditDisplayName.lastIndexOf(',');
+        String creatorName = createdInstanceEditDisplayName.substring(0, nameAndDateSeparatorIndex);
+        return creatorName;
     }
 }

@@ -2,85 +2,59 @@ package org.reactome.database;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.gk.model.GKInstance;
-import org.gk.model.InstanceDisplayNameGenerator;
 import org.gk.model.ReactomeJavaConstants;
-import org.gk.persistence.MySQLAdaptor;
-import org.gk.persistence.TransactionsNotSupportedException;
-import org.gk.schema.Schema;
+import org.reactome.curation.model.SimpleInstance;
 import org.reactome.reports.ReferenceMoleculeFormulaChangeReporter;
 import org.reactome.reports.ReferenceMoleculeNameChangeReporter;
 import org.reactome.reports.SimpleEntityNameChangeReporter;
+import org.reactome.utils.CuratorToolAPI;
 
 import java.io.IOException;
-import java.sql.SQLException;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
-import static org.reactome.reports.Utils.getCreator;
 import static org.reactome.reports.Utils.getCreatorName;
 
 public class DBInteractor implements DBReader, DBWriter {
     private static Logger logger = LogManager.getLogger(DBInteractor.class);
 
-    private final MySQLAdaptor dbAdaptor;
     private final long personId;
 
-    private GKInstance instanceEdit;
+    private CuratorToolAPI curatorToolAPI;
 
     private final ReferenceMoleculeNameChangeReporter referenceMoleculeNameChangeReporter;
     private final ReferenceMoleculeFormulaChangeReporter referenceMoleculeFormulaChangeReporter;
     private final SimpleEntityNameChangeReporter simpleEntityNameChangeReporter;
 
-    public DBInteractor(MySQLAdaptor dbAdaptor, long personId) {
-        this.dbAdaptor = dbAdaptor;
+    public DBInteractor(long personId) {
         this.personId = personId;
+
+        this.curatorToolAPI = new CuratorToolAPI();
 
         this.referenceMoleculeNameChangeReporter = new ReferenceMoleculeNameChangeReporter();
         this.referenceMoleculeFormulaChangeReporter = new ReferenceMoleculeFormulaChangeReporter();
         this.simpleEntityNameChangeReporter = new SimpleEntityNameChangeReporter();
     }
 
-    public void startTransaction() throws TransactionsNotSupportedException, SQLException {
-        getDbAdaptor().startTransaction();
-    }
-
-    public void commit() throws SQLException {
-        getDbAdaptor().commit();
+    @Override
+    public List<SimpleInstance> getAllChEBIReferenceMoleculeInstances() {
+        return curatorToolAPI.fetchChEBIReferenceMoleculeInstances();
     }
 
     @Override
-    public List<GKInstance> getAllChEBIReferenceMoleculeInstances() throws Exception {
-        return new ArrayList<>(
-            (Collection<GKInstance>) getDbAdaptor().fetchInstanceByAttribute(
-                ReactomeJavaConstants.ReferenceMolecule,
-                ReactomeJavaConstants.referenceDatabase,
-                "=",
-                getChEBIReferenceDatabaseOrThrow().getDBID()
-            )
-        );
+    public List<SimpleInstance> getReferenceMoleculesWithChEBIIdentifier(String chEBIId) {
+        return getAllChEBIReferenceMoleculeInstances()
+            .stream()
+            .filter(referenceMolecule -> referenceMolecule.getAttribute("identifier").equals(chEBIId))
+            .collect(Collectors.toList());
     }
 
     @Override
-    public List<GKInstance> getReferenceMoleculesWithChEBIIdentifier(String chEBIId) throws Exception {
-        Collection<GKInstance> refMolsWithChEBIIdentifier = (Collection<GKInstance>)
-            getDbAdaptor().fetchInstanceByAttribute(
-                ReactomeJavaConstants.ReferenceMolecule, ReactomeJavaConstants.identifier, "=", chEBIId
-            );
-
-        if (refMolsWithChEBIIdentifier == null || refMolsWithChEBIIdentifier.isEmpty()) {
-            return new ArrayList<>();
-        }
-        return new ArrayList<>(refMolsWithChEBIIdentifier);
-    }
-
-    @Override
-    public boolean updateSimpleEntityReferrersNames(GKInstance referenceMolecule, String newName) throws Exception {
+    public boolean updateSimpleEntityReferrersNames(SimpleInstance referenceMolecule, String newName) throws Exception {
         boolean anySimpleEntityNameUpdated = false;
-        for (GKInstance simpleEntity : getReferenceMoleculeReferrers(referenceMolecule)) {
+        for (SimpleInstance simpleEntity : getReferenceMoleculeReferrers(referenceMolecule)) {
+
             List<String> simpleEntityNames = getSimpleEntityInstanceNames(simpleEntity);
             List<String> updatedSimpleEntityNames = getUpdatedSimpleEntityNames(referenceMolecule, simpleEntity, newName);
 
@@ -91,14 +65,22 @@ public class DBInteractor implements DBReader, DBWriter {
             boolean shouldAutoUpdateSimpleEntityNames = !differentFirstNames(simpleEntityNames, updatedSimpleEntityNames);
 
             if (shouldAutoUpdateSimpleEntityNames) {
-                simpleEntity.setAttributeValue(ReactomeJavaConstants.name, updatedSimpleEntityNames);
-                getDbAdaptor().updateInstanceAttribute(simpleEntity, ReactomeJavaConstants.name);
-                updateModifiedInstanceEdits(simpleEntity);
+                simpleEntity.setAttribute(ReactomeJavaConstants.name, updatedSimpleEntityNames);
+                // curator-tool-ws's curation schema exposes SimpleEntity's referenceEntity slot as
+                // "referenceEntityList", which has no graph-core accessor, so inflate() never carries the
+                // referenceEntity link. Without re-attaching it, the commit's resetNode deletes the outgoing
+                // (SimpleEntity)-[:referenceEntity]->(ReferenceMolecule) edge and store() cannot recreate it.
+                // This SimpleEntity is a referenceEntity referrer of referenceMolecule, so re-link it here.
+                SimpleInstance referenceMoleculeShell = new SimpleInstance();
+                referenceMoleculeShell.setDbId(referenceMolecule.getDbId());
+                referenceMoleculeShell.setSchemaClassName(referenceMolecule.getSchemaClassName());
+                simpleEntity.setAttribute(ReactomeJavaConstants.referenceEntity, referenceMoleculeShell);
+                updateInDb(simpleEntity);
             }
 
             this.simpleEntityNameChangeReporter.report(
-                simpleEntity.getDBID().toString(),
-                getCreatorName(getCreator(simpleEntity)),
+                simpleEntity.getDbId().toString(),
+                getCreatorName(simpleEntity),
                 simpleEntity.getDisplayName(),
                 newName,
                 simpleEntityNames.toString(),
@@ -113,49 +95,47 @@ public class DBInteractor implements DBReader, DBWriter {
     }
 
     @Override
-    public boolean updateReferenceMoleculeName(GKInstance referenceMolecule, String newName) throws Exception {
+    public boolean stageUpdateForReferenceMoleculeName(SimpleInstance referenceMolecule, String newName) throws Exception {
         // TODO Check with Lisa and Peter if this implementation is correct - do we want to maintain old names
         //  and/or move the new name to be first for the reference molecule?
 
         List<String> referenceMoleculeNames =
-            safeList(referenceMolecule.getAttributeValuesList(ReactomeJavaConstants.name));
+            safeList((List<String>) referenceMolecule.getAttribute(ReactomeJavaConstants.name));
 
         if (referenceMoleculeNames.contains(newName)) {
             return false;
         }
 
         this.referenceMoleculeNameChangeReporter.report(
-            referenceMolecule.getDBID().toString(),
-            getCreatorName(getCreator(referenceMolecule)),
+            referenceMolecule.getDbId().toString(),
+            getCreatorName(referenceMolecule),
             referenceMolecule.getDisplayName(),
             referenceMoleculeNames.get(0),
             newName
         );
 
         referenceMoleculeNames.add(0, newName);
-        referenceMolecule.setAttributeValue(ReactomeJavaConstants.name, referenceMoleculeNames);
-        getDbAdaptor().updateInstanceAttribute(referenceMolecule, ReactomeJavaConstants.name);
+        referenceMolecule.setAttribute(ReactomeJavaConstants.name, referenceMoleculeNames);
 
         return true;
     }
 
     @Override
-    public boolean updateReferenceMoleculeFormula(GKInstance referenceMolecule, String newFormula) throws Exception {
+    public boolean stageUpdateForReferenceMoleculeFormula(SimpleInstance referenceMolecule, String newFormula) throws Exception {
         if (newFormula == null || newFormula.isEmpty()) {
             return false;
         }
 
-        String existingFormula = (String) referenceMolecule.getAttributeValue(ReactomeJavaConstants.formula);
+        String existingFormula = (String) referenceMolecule.getAttribute(ReactomeJavaConstants.formula);
         if (newFormula.equals(existingFormula)) {
             return false;
         }
 
-        referenceMolecule.setAttributeValue(ReactomeJavaConstants.formula, newFormula);
-        getDbAdaptor().updateInstanceAttribute(referenceMolecule, ReactomeJavaConstants.formula);
+        referenceMolecule.setAttribute(ReactomeJavaConstants.formula, newFormula);
 
         this.referenceMoleculeFormulaChangeReporter.report(
-            referenceMolecule.getDBID().toString(),
-            getCreatorName(getCreator(referenceMolecule)),
+            referenceMolecule.getDbId().toString(),
+            getCreatorName(referenceMolecule),
             referenceMolecule.getDisplayName(),
             existingFormula,
             newFormula
@@ -165,17 +145,25 @@ public class DBInteractor implements DBReader, DBWriter {
     }
 
     @Override
-    public boolean updateReferenceMoleculeDisplayName(GKInstance referenceMolecule) throws Exception {
-        InstanceDisplayNameGenerator.setDisplayName(referenceMolecule);
-        getDbAdaptor().updateInstanceAttribute(referenceMolecule, ReactomeJavaConstants._displayName);
-        return true;
-    }
+    public void stageUpdateForReferenceMoleculeDisplayName(SimpleInstance referenceMolecule) {
+        StringBuilder referenceMoleculeDisplayNameBuilder = new StringBuilder();
 
-    public boolean updateModifiedInstanceEdits(GKInstance instance) throws Exception {
-        instance.getAttributeValuesList(ReactomeJavaConstants.modified);
-        instance.addAttributeValue(ReactomeJavaConstants.modified, getInstanceEdit());
-        getDbAdaptor().updateInstanceAttribute(instance, ReactomeJavaConstants.modified);
-        return true;
+        Object nameVal = referenceMolecule.getAttribute("name");
+        String name = (nameVal instanceof List)
+            ? (((List<?>) nameVal).isEmpty() ? null : String.valueOf(((List<?>) nameVal).get(0)))
+            : (String) nameVal;
+        if (name != null) {
+            referenceMoleculeDisplayNameBuilder.append(name);
+        }
+
+        Object refDb = referenceMolecule.getAttribute("referenceDatabase");
+        referenceMoleculeDisplayNameBuilder.append(" [").append(refDb instanceof SimpleInstance
+            ? ((SimpleInstance) refDb).getDisplayName() : "unknown");
+
+        Object id = referenceMolecule.getAttribute("identifier");
+        referenceMoleculeDisplayNameBuilder.append(":").append(id != null ? id : "unknown").append("]");
+
+        referenceMolecule.setDisplayName(referenceMoleculeDisplayNameBuilder.toString());
     }
 
     public void closeReports() throws IOException {
@@ -184,21 +172,18 @@ public class DBInteractor implements DBReader, DBWriter {
         this.simpleEntityNameChangeReporter.writeFooterIfInitialized();
     }
 
-    GKInstance getInstanceEdit() throws Exception {
-        if (instanceEdit == null) {
-            instanceEdit = new GKInstance(getSchema().getClassByName(ReactomeJavaConstants.InstanceEdit));
-            instanceEdit.setDbAdaptor(getDbAdaptor());
-            instanceEdit.setAttributeValue(ReactomeJavaConstants.note, "ChEBI Update");
-            instanceEdit.setAttributeValue(ReactomeJavaConstants.author, getPersonInstance());
-            instanceEdit.setAttributeValue(ReactomeJavaConstants.dateTime, getCurrentDateTime());
-            InstanceDisplayNameGenerator.setDisplayName(instanceEdit);
-        }
+    @Override
+    public void updateInDb(SimpleInstance instance) {
+        instance.setDefaultPersonId(getPersonId());
+        curatorToolAPI.commit(instance);
+    }
 
-        return instanceEdit;
+    public SimpleInstance inflate(SimpleInstance shellInstance) {
+        return curatorToolAPI.inflate(shellInstance);
     }
 
     private List<String> getUpdatedSimpleEntityNames(
-        GKInstance referenceMolecule, GKInstance simpleEntity, String newChEBIName) throws Exception {
+        SimpleInstance referenceMolecule, SimpleInstance simpleEntity, String newChEBIName) throws Exception {
 
         List<String> simpleEntityNames = getSimpleEntityInstanceNames(simpleEntity);
         if (simpleEntityNames.isEmpty()) {
@@ -284,63 +269,28 @@ public class DBInteractor implements DBReader, DBWriter {
         return !simpleEntityFirstName.equals(updatedSimpleEntityFirstName);
     }
 
-    private List<String> getReferenceMoleculeNames(GKInstance referenceMolecule) throws Exception {
-        return referenceMolecule.getAttributeValuesList(ReactomeJavaConstants.name);
+    private List<String> getReferenceMoleculeNames(SimpleInstance referenceMolecule) throws Exception {
+        return (List<String>) referenceMolecule.getAttribute(ReactomeJavaConstants.name);
     }
 
-    private Schema getSchema() throws Exception {
-        if (getDbAdaptor().getSchema() == null) {
-            getDbAdaptor().fetchSchema();
-        }
-
-        return getDbAdaptor().getSchema();
+    private List<SimpleInstance> getReferenceMoleculeReferrers(SimpleInstance referenceMolecule) throws Exception {
+        return curatorToolAPI.getReferrers(referenceMolecule, ReactomeJavaConstants.referenceEntity)
+            .stream()
+            .map(this::inflate)
+            .collect(Collectors.toList());
     }
 
-    private GKInstance getPersonInstance() throws Exception {
-        return getDbAdaptor().fetchInstance(getPersonId());
-    }
-
-    private String getCurrentDateTime() {
-        return ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S"));
-    }
-
-    private GKInstance getChEBIReferenceDatabaseOrThrow() throws Exception {
-        Collection<GKInstance> chEBIReferenceDatabaseInstances = getDbAdaptor().fetchInstanceByAttribute(
-            ReactomeJavaConstants.ReferenceDatabase, ReactomeJavaConstants.name, "=", "ChEBI"
-        );
-
-        if (chEBIReferenceDatabaseInstances == null || chEBIReferenceDatabaseInstances.size() != 1) {
-            throw new RuntimeException("No unique ChEBI ReferenceDatabase instance could be found");
-        }
-
-        return chEBIReferenceDatabaseInstances.iterator().next();
-    }
-
-    private List<GKInstance> getReferenceMoleculeReferrers(GKInstance referenceMolecule) throws Exception {
+    private List<String> getSimpleEntityInstanceNames(SimpleInstance simpleEntityInstance) {
         @SuppressWarnings("unchecked")
-        Collection<GKInstance> referrers = referenceMolecule.getReferers(ReactomeJavaConstants.referenceEntity);
-        if (referrers == null || referrers.isEmpty()) {
-            return new ArrayList<>();
-        }
-        return new ArrayList<>(referrers);
-    }
-
-    private List<String> getSimpleEntityInstanceNames(GKInstance simpleEntityInstance) throws Exception {
-        @SuppressWarnings("unchecked")
-        List<String> names = (List<String>) simpleEntityInstance.getAttributeValuesList(ReactomeJavaConstants.name);
+        List<String> names = (List<String>) simpleEntityInstance.getAttribute(ReactomeJavaConstants.name);
         if (names == null || names.isEmpty()) {
             return new ArrayList<>();
         }
         return new ArrayList<>(names);
     }
 
-
     private <E> List<E> safeList(List<E> list) {
         return list != null ? list : new ArrayList<>();
-    }
-
-    private MySQLAdaptor getDbAdaptor() {
-        return this.dbAdaptor;
     }
 
     private long getPersonId() {

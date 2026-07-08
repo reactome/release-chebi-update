@@ -1,12 +1,11 @@
 package org.reactome.database;
 
-import org.gk.model.GKInstance;
-import org.gk.schema.InvalidAttributeException;
-import org.gk.schema.InvalidAttributeValueException;
+import org.reactome.curation.model.SimpleInstance;
 
 public interface DBWriter {
-    boolean updateSimpleEntityReferrersNames(GKInstance referenceMolecule, String newName) throws Exception;
-    boolean updateReferenceMoleculeName(GKInstance referenceMolecule, String newName) throws Exception;
-    boolean updateReferenceMoleculeFormula(GKInstance referenceMolecule, String newFormula) throws Exception;
-    boolean updateReferenceMoleculeDisplayName(GKInstance referenceMolecule) throws Exception;
+    boolean updateSimpleEntityReferrersNames(SimpleInstance referenceMolecule, String newName) throws Exception;
+    boolean stageUpdateForReferenceMoleculeName(SimpleInstance referenceMolecule, String newName) throws Exception;
+    boolean stageUpdateForReferenceMoleculeFormula(SimpleInstance referenceMolecule, String newFormula) throws Exception;
+    void stageUpdateForReferenceMoleculeDisplayName(SimpleInstance referenceMolecule) throws Exception;
+    void updateInDb(SimpleInstance instance);
 }
