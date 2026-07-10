@@ -42,6 +42,7 @@ public class Main {
         logger.info("Done checking for duplicate reference molecules");
 
         logger.info("Finished ChEBI update - please check report files for details");
+        dbInteractor.close();
     }
 
     private static void updateReferenceMolecules(List<SimpleInstance> referenceMolecules) throws Exception {

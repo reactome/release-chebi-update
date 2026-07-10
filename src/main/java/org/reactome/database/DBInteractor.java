@@ -296,4 +296,8 @@ public class DBInteractor implements DBReader, DBWriter {
     private long getPersonId() {
         return this.personId;
     }
+
+    public void close() {
+        this.curatorToolAPI.close();
+    }
 }
