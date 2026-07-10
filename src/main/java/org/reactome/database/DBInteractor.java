@@ -11,7 +11,10 @@ import org.reactome.utils.CuratorToolAPI;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.reactome.reports.Utils.getCreatorName;
@@ -27,6 +30,12 @@ public class DBInteractor implements DBReader, DBWriter {
     private final ReferenceMoleculeFormulaChangeReporter referenceMoleculeFormulaChangeReporter;
     private final SimpleEntityNameChangeReporter simpleEntityNameChangeReporter;
 
+    // The full ChEBI ReferenceMolecule set is expensive to load (a Neo4j round-trip per instance), so load
+    // it once and reuse. identifierToReferenceMolecules indexes that set by ChEBI identifier so duplicate
+    // look-ups are in-memory instead of re-fetching+re-inflating every molecule on each call (former O(N^2)).
+    private List<SimpleInstance> allChEBIReferenceMoleculesCache;
+    private Map<String, List<SimpleInstance>> identifierToReferenceMolecules;
+
     public DBInteractor(long personId) {
         this.personId = personId;
 
@@ -39,15 +48,38 @@ public class DBInteractor implements DBReader, DBWriter {
 
     @Override
     public List<SimpleInstance> getAllChEBIReferenceMoleculeInstances() {
-        return curatorToolAPI.fetchChEBIReferenceMoleculeInstances();
+        // Load once and memoize; every subsequent caller (including the identifier index) reuses it
+        // instead of triggering another full fetch + per-instance inflate.
+        if (allChEBIReferenceMoleculesCache == null) {
+            allChEBIReferenceMoleculesCache = curatorToolAPI.fetchChEBIReferenceMoleculeInstances();
+        }
+        return allChEBIReferenceMoleculesCache;
     }
 
     @Override
     public List<SimpleInstance> getReferenceMoleculesWithChEBIIdentifier(String chEBIId) {
-        return getAllChEBIReferenceMoleculeInstances()
-            .stream()
-            .filter(referenceMolecule -> referenceMolecule.getAttribute("identifier").equals(chEBIId))
-            .collect(Collectors.toList());
+        // In-memory lookup against the identifier index rather than re-fetching all molecules per call.
+        return getIdentifierToReferenceMolecules().getOrDefault(chEBIId, Collections.emptyList());
+    }
+
+    /**
+     * Index of ChEBI identifier -> ReferenceMolecule instances carrying that identifier, built once from the
+     * memoized full set. The chebi-update run never mutates ReferenceMolecule identifiers (only name/formula/
+     * displayName), so this index stays valid for the whole run.
+     */
+    private Map<String, List<SimpleInstance>> getIdentifierToReferenceMolecules() {
+        if (identifierToReferenceMolecules == null) {
+            Map<String, List<SimpleInstance>> index = new HashMap<>();
+            for (SimpleInstance referenceMolecule : getAllChEBIReferenceMoleculeInstances()) {
+                Object identifier = referenceMolecule.getAttribute(ReactomeJavaConstants.identifier);
+                if (identifier == null) {
+                    continue;
+                }
+                index.computeIfAbsent(identifier.toString(), key -> new ArrayList<>()).add(referenceMolecule);
+            }
+            identifierToReferenceMolecules = index;
+        }
+        return identifierToReferenceMolecules;
     }
 
     @Override
