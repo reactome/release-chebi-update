@@ -210,6 +210,14 @@ public class DBInteractor implements DBReader, DBWriter {
         curatorToolAPI.commit(instance);
     }
 
+    /**
+     * Run the given work inside a single Neo4j transaction (when available) so the multiple commits it makes
+     * are flushed together rather than each in its own transaction. Falls back to running as-is otherwise.
+     */
+    public void runInTransaction(Runnable work) {
+        curatorToolAPI.runInTransaction(work);
+    }
+
     public SimpleInstance inflate(SimpleInstance shellInstance) {
         return curatorToolAPI.inflate(shellInstance);
     }

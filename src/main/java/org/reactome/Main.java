@@ -74,8 +74,12 @@ public class Main {
         for (SimpleInstance referenceMolecule : referenceMoleculeToPotentialChEBIEntity.keySet() ) {
             Optional<ChEBIEntity> potentialChEBIEntity = referenceMoleculeToPotentialChEBIEntity.get(referenceMolecule);
 
+            // Batch each molecule's commits (its SimpleEntity referrer updates + the ReferenceMolecule
+            // itself) into one Neo4j transaction to cut per-commit transaction overhead. Per-molecule
+            // granularity keeps transactions bounded and makes each molecule's update atomic.
             potentialChEBIEntity.ifPresentOrElse(chEBIEntity -> {
-                updateReferenceMoleculeWithChEBIEntity(referenceMolecule, chEBIEntity);
+                dbInteractor.runInTransaction(
+                    () -> updateReferenceMoleculeWithChEBIEntity(referenceMolecule, chEBIEntity));
             }, () -> logFailedChEBIEntityLookUp(referenceMolecule));
         }
     }
