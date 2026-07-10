@@ -63,7 +63,6 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-
     <dependencies>
         <dependency>
             <groupId>org.json</groupId>
@@ -81,6 +80,7 @@
             <groupId>org.reactome</groupId>
             <artifactId>curator-tool-ws</artifactId>
             <version>${curator-tool-ws.version}</version>
+            <classifier>plain</classifier>
             <exclusions>
                 <!-- Drop Logback (and the log4j->slf4j bridge) so SLF4J routes to log4j2,
                      letting log4j2.xml govern all logging (incl. curator-tool-ws). -->
@@ -89,7 +89,6 @@
                     <artifactId>spring-boot-starter-logging</artifactId>
                 </exclusion>
             </exclusions>
-            <classifier>plain</classifier>
         </dependency>
 
         <dependency>
