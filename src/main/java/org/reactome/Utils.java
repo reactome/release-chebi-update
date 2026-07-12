@@ -9,13 +9,11 @@ import java.util.stream.Collectors;
 
 public class Utils {
 
-    public static Map<String, SimpleInstance> getIdentifierToReferenceMoleculeMap(List<SimpleInstance> referenceMolecules) {
-        return referenceMolecules
-            .stream()
-            .collect(Collectors.toMap(
-                Utils::getReferenceMoleculeIdentifier,
-                referenceMolecule -> referenceMolecule)
-            );
+    public static Map<String, List<SimpleInstance>> getIdentifierToReferenceMoleculeMap(List<SimpleInstance> referenceMolecules) {
+        return referenceMolecules.stream()
+            .collect(Collectors.groupingBy(
+                Utils::getReferenceMoleculeIdentifier
+            ));
     }
 
     private static String getReferenceMoleculeIdentifier(SimpleInstance referenceMolecule) {

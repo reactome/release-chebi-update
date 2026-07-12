@@ -31,7 +31,7 @@ public class ChEBIEntityRetriever {
             throw new IllegalStateException("No reference molecules for identifiers to query ChEBI");
         }
 
-        Map<String, SimpleInstance> chEBIIdentifierToReferenceMoleculeMap =
+        Map<String, List<SimpleInstance>> chEBIIdentifierToReferenceMoleculeMap =
             Utils.getIdentifierToReferenceMoleculeMap(referenceMolecules);
 
         Set<String> chEBIIdentifiers = chEBIIdentifierToReferenceMoleculeMap.keySet();
@@ -39,15 +39,18 @@ public class ChEBIEntityRetriever {
 
         Map<SimpleInstance, Optional<ChEBIEntity>> chEBIEntities = new HashMap<>();
         for (String chEBIIdentifier : chEBIIdentifiers) {
-            SimpleInstance referenceMolecule = chEBIIdentifierToReferenceMoleculeMap.get(chEBIIdentifier);
+            List<SimpleInstance> referenceMoleculesWithIdentifier =
+                chEBIIdentifierToReferenceMoleculeMap.get(chEBIIdentifier);
 
-            JSONObject chEBIIdentifierJSON = chEBIResponseJSON.getJSONObject(chEBIIdentifier);
-            if (chEBIIdentifierJSON.getBoolean("exists")) {
-                chEBIEntities.put(referenceMolecule, Optional.of(
-                    chEBIEntityParser.parse(chEBIIdentifierJSON.getJSONObject("data"))
-                ));
-            } else {
-                chEBIEntities.put(referenceMolecule, Optional.empty());
+            for (SimpleInstance referenceMolecule : referenceMoleculesWithIdentifier) {
+                JSONObject chEBIIdentifierJSON = chEBIResponseJSON.getJSONObject(chEBIIdentifier);
+                if (chEBIIdentifierJSON.getBoolean("exists")) {
+                    chEBIEntities.put(referenceMolecule, Optional.of(
+                        chEBIEntityParser.parse(chEBIIdentifierJSON.getJSONObject("data"))
+                    ));
+                } else {
+                    chEBIEntities.put(referenceMolecule, Optional.empty());
+                }
             }
         }
         return chEBIEntities;
