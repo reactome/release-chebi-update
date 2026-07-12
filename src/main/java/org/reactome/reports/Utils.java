@@ -12,6 +12,10 @@ public class Utils {
         }
         String createdInstanceEditDisplayName = createdInstanceEdit.getDisplayName();
         int nameAndDateSeparatorIndex = createdInstanceEditDisplayName.lastIndexOf(',');
+        if (nameAndDateSeparatorIndex == -1) {
+            return createdInstanceEditDisplayName;
+        }
+
         String creatorName = createdInstanceEditDisplayName.substring(0, nameAndDateSeparatorIndex);
         return creatorName;
     }
