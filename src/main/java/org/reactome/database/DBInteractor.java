@@ -10,11 +10,7 @@ import org.reactome.reports.SimpleEntityNameChangeReporter;
 import org.reactome.utils.CuratorToolAPI;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.reactome.reports.Utils.getCreatorName;
@@ -60,6 +56,11 @@ public class DBInteractor implements DBReader, DBWriter {
     public List<SimpleInstance> getReferenceMoleculesWithChEBIIdentifier(String chEBIId) {
         // In-memory lookup against the identifier index rather than re-fetching all molecules per call.
         return getIdentifierToReferenceMolecules().getOrDefault(chEBIId, Collections.emptyList());
+    }
+
+    @Override
+    public List<SimpleInstance> getReferrerInstances(SimpleInstance instance, String attribute) throws Exception {
+        return curatorToolAPI.getReferrers(instance, attribute);
     }
 
     /**

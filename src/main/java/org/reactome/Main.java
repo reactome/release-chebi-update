@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.reactome.reports.Utils.getCreatorName;
 
@@ -174,17 +175,10 @@ public class Main {
     }
 
     private static String getReferenceMoleculeReferrerDbIds(SimpleInstance referenceMolecule) throws Exception {
-//        Collection<SimpleInstance> referrers =
-//            ((Collection<SimpleInstance>) referenceMolecule.getReferers(ReactomeJavaConstants.referenceEntity));
-
-//        if (referrers == null) {
-//            return "";
-//        }
-//
-//        return referrers.stream()
-//            .map(referrer -> referrer.getDbId().toString())
-//            .collect(Collectors.joining("|"));
-        return "To be re-implemented";
+        return dbInteractor.getReferrerInstances(referenceMolecule, ReactomeJavaConstants.referenceEntity)
+            .stream()
+            .map(referrer -> referrer.getDbId().toString())
+            .collect(Collectors.joining("|"));
     }
 
     private static Properties getConfigProperties(String configFilePath) throws IOException {
