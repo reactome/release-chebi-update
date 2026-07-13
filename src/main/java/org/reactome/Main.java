@@ -4,7 +4,6 @@ import com.google.common.collect.Lists;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gk.model.ReactomeJavaConstants;
-import org.gk.persistence.MySQLAdaptor;
 import org.reactome.curation.model.SimpleInstance;
 import org.reactome.database.DBInteractor;
 import org.reactome.model.ChEBIEntity;
@@ -15,7 +14,6 @@ import org.reactome.webservice.ChEBIEntityRetriever;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -186,18 +184,6 @@ public class Main {
         configProperties.load(Files.newInputStream(Path.of(configFilePath)));
 
         return configProperties;
-    }
-
-    private static MySQLAdaptor getCuratorDbAdaptor(Properties configProperties) throws SQLException {
-        final String prefix = "curator.database";
-
-        String host = configProperties.getProperty(prefix + ".host", "localhost");
-        String dbName = configProperties.getProperty(prefix + ".name");
-        String user = configProperties.getProperty(prefix + ".user", "root");
-        String password = configProperties.getProperty(prefix + ".password", "root");
-        int port = Integer.parseInt(configProperties.getProperty(prefix + ".port", "3306"));
-
-        return new MySQLAdaptor(host, dbName, user, password, port);
     }
 
     private static long getPersonId(Properties configProperties) {
