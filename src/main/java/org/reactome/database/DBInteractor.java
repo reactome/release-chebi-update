@@ -63,26 +63,6 @@ public class DBInteractor implements DBReader, DBWriter {
         return curatorToolAPI.getReferrers(instance, attribute);
     }
 
-    /**
-     * Index of ChEBI identifier -> ReferenceMolecule instances carrying that identifier, built once from the
-     * memoized full set. The chebi-update run never mutates ReferenceMolecule identifiers (only name/formula/
-     * displayName), so this index stays valid for the whole run.
-     */
-    private Map<String, List<SimpleInstance>> getIdentifierToReferenceMolecules() {
-        if (identifierToReferenceMolecules == null) {
-            Map<String, List<SimpleInstance>> index = new HashMap<>();
-            for (SimpleInstance referenceMolecule : getAllChEBIReferenceMoleculeInstances()) {
-                Object identifier = referenceMolecule.getAttribute(ReactomeJavaConstants.identifier);
-                if (identifier == null) {
-                    continue;
-                }
-                index.computeIfAbsent(identifier.toString(), key -> new ArrayList<>()).add(referenceMolecule);
-            }
-            identifierToReferenceMolecules = index;
-        }
-        return identifierToReferenceMolecules;
-    }
-
     @Override
     public boolean updateSimpleEntityReferrersNames(SimpleInstance referenceMolecule, String newName) throws Exception {
         boolean anySimpleEntityNameUpdated = false;
@@ -223,6 +203,30 @@ public class DBInteractor implements DBReader, DBWriter {
         return curatorToolAPI.inflate(shellInstance);
     }
 
+    public void close() {
+        this.curatorToolAPI.close();
+    }
+
+    /**
+     * Index of ChEBI identifier -> ReferenceMolecule instances carrying that identifier, built once from the
+     * memoized full set. The chebi-update run never mutates ReferenceMolecule identifiers (only name/formula/
+     * displayName), so this index stays valid for the whole run.
+     */
+    private Map<String, List<SimpleInstance>> getIdentifierToReferenceMolecules() {
+        if (identifierToReferenceMolecules == null) {
+            Map<String, List<SimpleInstance>> index = new HashMap<>();
+            for (SimpleInstance referenceMolecule : getAllChEBIReferenceMoleculeInstances()) {
+                Object identifier = referenceMolecule.getAttribute(ReactomeJavaConstants.identifier);
+                if (identifier == null) {
+                    continue;
+                }
+                index.computeIfAbsent(identifier.toString(), key -> new ArrayList<>()).add(referenceMolecule);
+            }
+            identifierToReferenceMolecules = index;
+        }
+        return identifierToReferenceMolecules;
+    }
+
     private List<String> getUpdatedSimpleEntityNames(
         SimpleInstance referenceMolecule, SimpleInstance simpleEntity, String newChEBIName) throws Exception {
 
@@ -336,9 +340,5 @@ public class DBInteractor implements DBReader, DBWriter {
 
     private long getPersonId() {
         return this.personId;
-    }
-
-    public void close() {
-        this.curatorToolAPI.close();
     }
 }
