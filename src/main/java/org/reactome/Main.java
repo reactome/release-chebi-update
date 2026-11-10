@@ -50,9 +50,18 @@ public class Main {
 
         logger.info("Found " + referenceMolecules.size() + " reference molecules to process");
 
-        final int batchSize = 500;
+        // Kept small so each ChEBI bulk request stays light; large batches were triggering intermittent 500s
+        final int batchSize = 100;
+        // Pause between ChEBI requests so a long run doesn't keep the EBI backend under constant load
+        final long delayBetweenBatchesMs = 1000;
+
+        List<List<SimpleInstance>> batches = getReferenceMoleculeBatches(referenceMolecules, batchSize);
         int processedCount = 0;
-        for (List<SimpleInstance> referenceMoleculeBatch : getReferenceMoleculeBatches(referenceMolecules, batchSize)) {
+        for (int i = 0; i < batches.size(); i++) {
+            if (i > 0) {
+                Thread.sleep(delayBetweenBatchesMs);
+            }
+            List<SimpleInstance> referenceMoleculeBatch = batches.get(i);
             updateReferenceMoleculeBatch(referenceMoleculeBatch);
 
             processedCount += referenceMoleculeBatch.size();

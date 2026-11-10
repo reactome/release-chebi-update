@@ -29,7 +29,7 @@ class ChEBIAPIClientTest {
 
     @BeforeEach
     void setUp() {
-        client = new ChEBIAPIClient(httpClient);
+        client = new ChEBIAPIClient(httpClient, 1);
     }
 
     @Test
@@ -76,7 +76,7 @@ class ChEBIAPIClientTest {
         assertThrows(IOException.class, () ->
             client.fetchCompounds(Set.of("CHEBI:15377"))
         );
-        verify(httpClient, times(3)).send(any(), any()); // Should try exactly MAX_RETRIES times
+        verify(httpClient, times(ChEBIAPIClient.MAX_RETRIES)).send(any(), any());
     }
 
     @Test
