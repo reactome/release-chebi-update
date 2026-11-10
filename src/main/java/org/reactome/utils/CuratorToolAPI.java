@@ -17,6 +17,8 @@ import org.springframework.data.neo4j.core.transaction.Neo4jTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.neo4j.driver.Driver;
 
+import javax.servlet.http.HttpServletRequest;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -131,7 +133,7 @@ public class CuratorToolAPI {
                 pageSize,
                 Optional.of("referenceDatabase"),
                 Optional.of("equal"),
-                Optional.of("ChEBI")
+                searchKeysRequest("ChEBI")
             );
 
             if (total == null) {
@@ -142,6 +144,25 @@ public class CuratorToolAPI {
         } while (skip < total);
 
         return allChEBIReferenceMoleculesInstances.parallelStream().map(this::inflate).collect(Collectors.toList());
+    }
+
+    /**
+     * CurationController.searchInstances reads its search keys from the repeated "searchKeys"
+     * request parameter. Since the controller is called directly here (not over HTTP), this builds
+     * a minimal request that answers only that lookup.
+     */
+    private static HttpServletRequest searchKeysRequest(String... searchKeys) {
+        return (HttpServletRequest) Proxy.newProxyInstance(
+            HttpServletRequest.class.getClassLoader(),
+            new Class<?>[] {HttpServletRequest.class},
+            (proxy, method, args) -> {
+                if (method.getName().equals("getParameterValues") && "searchKeys".equals(args[0])) {
+                    return searchKeys.clone();
+                }
+                throw new UnsupportedOperationException(
+                    "Unexpected HttpServletRequest call: " + method.getName());
+            }
+        );
     }
 
     public SimpleInstance findDatabaseObjectByDbId(long dbId) {
